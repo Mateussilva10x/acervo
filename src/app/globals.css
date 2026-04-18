@@ -34,7 +34,7 @@
   --color-leather: hsl(var(--leather));
 
   /* Typography */
-  --font-sans: var(--font-inter), Inter, system-ui, sans-serif;
+  --font-sans: var(--font-roboto), Roboto, system-ui, sans-serif;
   --font-serif: var(--font-playfair), "Playfair Display", Georgia, serif;
 
   /* Border radius */
@@ -134,9 +134,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif);
-}
 
 /* ─── Utilities ──────────────────────────────────────────────── */
 .scrollbar-hide {

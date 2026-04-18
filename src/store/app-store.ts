@@ -19,6 +19,7 @@ interface AppState {
   // Notes
   notes: Note[];
   addNote: (note: Note) => void;
+  updateNote: (id: string, patch: Partial<Note>) => void;
   deleteNote: (id: string) => void;
 }
 
@@ -39,11 +40,15 @@ export const useAppStore = create<AppState>()(
       notes: MOCK_NOTES,
       addNote: (note) =>
         set((s) => ({ notes: [note, ...s.notes] })),
+      updateNote: (id, patch) =>
+        set((s) => ({
+          notes: s.notes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+        })),
       deleteNote: (id) =>
         set((s) => ({ notes: s.notes.filter((n) => n.id !== id) })),
     }),
     {
-      name: "segundo-cerebro-store",
+      name: "acervo-store",
       partialize: (state) => ({
         token: state.token,
         user: state.user,

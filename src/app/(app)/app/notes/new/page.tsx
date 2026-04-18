@@ -193,7 +193,7 @@ export default function NewNotePage() {
                 <BookOpen size={14} className="text-muted-foreground" />
                 Referências Bíblicas
               </label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <input
                   type="text"
                   value={bibleBook}

@@ -19,7 +19,7 @@ function ThemesContent() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <h1 className="font-serif text-3xl font-bold text-foreground">Temas</h1>
+      <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Temas</h1>
 
       {/* Tags Cloud */}
       <div className="flex flex-wrap gap-2">

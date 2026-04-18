@@ -7,6 +7,7 @@ import {
   FileText,
   PlusCircle,
   BookOpen,
+  BookText,
   Tag,
   Search,
   Settings,
@@ -22,13 +23,14 @@ const navItems = [
   { href: "/app/dashboard", label: "Painel", icon: LayoutDashboard },
   { href: "/app/notes", label: "Notas", icon: FileText },
   { href: "/app/notes/new", label: "Nova Nota", icon: PlusCircle },
+  { href: "/app/reader", label: "Ler a Bíblia", icon: BookText },
   { href: "/app/bible", label: "Referências Bíblicas", icon: BookOpen },
   { href: "/app/themes", label: "Temas", icon: Tag },
   { href: "/app/search", label: "Buscar", icon: Search },
   { href: "/app/settings", label: "Configurações", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { darkMode, toggleDarkMode, logout } = useAppStore();
@@ -39,13 +41,13 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-60 shrink-0 flex flex-col h-screen bg-sidebar border-r border-sidebar-border sticky top-0">
+    <aside className="w-60 shrink-0 flex flex-col h-full bg-sidebar border-r border-sidebar-border">
       {/* Logo */}
       <div className="px-4 py-5 border-b border-sidebar-border">
         <Link href="/app/dashboard" className="flex items-center gap-2">
           <BookMarked className="text-gold" size={20} />
           <span className="font-serif text-base font-semibold text-foreground">
-            Segundo Cérebro
+            Acervo
           </span>
         </Link>
       </div>
@@ -61,6 +63,7 @@ export function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-100",
                 active

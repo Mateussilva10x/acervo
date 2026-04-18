@@ -6,6 +6,7 @@ import { Search, Tag, BookOpen, Plus, SlidersHorizontal } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { THEMES } from "@/lib/mock-data";
 import { formatDate } from "@/lib/utils";
+import { readerUrl } from "@/lib/bible-books";
 
 export default function NotesPage() {
   const { notes } = useAppStore();
@@ -39,7 +40,7 @@ export default function NotesPage() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="font-serif text-3xl font-bold text-foreground">
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
           Todas as notas
         </h1>
         <Link
@@ -52,9 +53,9 @@ export default function NotesPage() {
       </div>
 
       {/* Filters bar */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         {/* Search */}
-        <div className="relative flex-1 min-w-48">
+        <div className="relative flex-1">
           <Search
             size={15}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -68,32 +69,33 @@ export default function NotesPage() {
           />
         </div>
 
-        {/* Theme filter */}
-        <div className="flex items-center gap-1.5">
-          <SlidersHorizontal size={14} className="text-muted-foreground" />
+        {/* Theme filter + Sort (same row on mobile) */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
+            <SlidersHorizontal size={14} className="text-muted-foreground shrink-0" />
+            <select
+              value={filterTheme}
+              onChange={(e) => setFilterTheme(e.target.value)}
+              className="flex-1 sm:flex-none h-9 rounded-xl border border-input bg-transparent px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Todas</option>
+              {THEMES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <select
-            value={filterTheme}
-            onChange={(e) => setFilterTheme(e.target.value)}
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as "recent" | "oldest")}
             className="h-9 rounded-xl border border-input bg-transparent px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            <option value="">Todas as notas</option>
-            {THEMES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
+            <option value="recent">Recentes</option>
+            <option value="oldest">Antigas</option>
           </select>
         </div>
-
-        {/* Sort */}
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as "recent" | "oldest")}
-          className="h-9 rounded-xl border border-input bg-transparent px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="recent">Mais recentes</option>
-          <option value="oldest">Mais antigas</option>
-        </select>
       </div>
 
       {/* Count */}
@@ -114,11 +116,12 @@ export default function NotesPage() {
           filtered.map((note) => (
             <div
               key={note.id}
-              className="rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group cursor-pointer"
+              className="rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-serif text-sm font-semibold text-foreground group-hover:text-gold transition-colors">
+                  <Link href={`/app/notes/${note.id}`}>
+                  <h3 className="font-serif text-sm font-semibold text-foreground group-hover:text-gold transition-colors cursor-pointer">
                     {note.title}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
@@ -129,6 +132,7 @@ export default function NotesPage() {
                       📍 {note.location}
                     </p>
                   )}
+                  </Link>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {note.themes.map((theme) => (
                       <button
@@ -141,15 +145,17 @@ export default function NotesPage() {
                       </button>
                     ))}
                     {note.bibleRefs.map((ref) => (
-                      <span
+                      <Link
                         key={`${ref.book}-${ref.chapter}`}
-                        className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
+                        href={readerUrl(ref.book, ref.chapter)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold transition-colors"
                       >
                         <BookOpen size={10} />
                         {ref.book} {ref.chapter}
                         {ref.verseStart ? `:${ref.verseStart}` : ""}
                         {ref.verseEnd ? `-${ref.verseEnd}` : ""}
-                      </span>
+                      </Link>
                     ))}
                   </div>
                 </div>

@@ -25,7 +25,7 @@ export async function mockLogin(
 
   if (email === "igreja@demo.com" && password === "demo123456") {
     return {
-      token: "fake-jwt-segundo-cerebro-demo-token",
+      token: "fake-jwt-acervo-demo-token",
       user: DEMO_USER,
     };
   }

@@ -21,7 +21,7 @@ export default function LandingPage() {
           <Link href="/" className="flex items-center gap-2">
             <BookMarked className="text-gold" size={20} />
             <span className="font-serif text-lg font-semibold text-leather">
-              Segundo Cérebro
+              Acervo
             </span>
           </Link>
           <nav className="flex items-center gap-4">
@@ -44,9 +44,9 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-24 pb-20 text-center">
         <h1 className="font-serif text-5xl md:text-6xl font-bold text-leather leading-tight mb-6">
-          O Segundo Cérebro do
+          Acervo — O Segundo Cérebro
           <br />
-          Pregador
+          do Pregador
         </h1>
         <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
           Capture, organize e encontre suas anotações, ilustrações e
@@ -337,7 +337,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <p className="text-center text-sm text-muted-foreground">
-          © 2026 Segundo Cérebro. All rights reserved.
+          © 2026 Acervo. All rights reserved.
         </p>
       </footer>
     </div>

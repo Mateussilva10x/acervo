@@ -21,7 +21,7 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="font-serif text-3xl font-bold text-foreground">
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
           Bem-vindo de volta, {user?.name ?? "Pastor"}!
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
@@ -73,7 +73,7 @@ export default function DashboardPage() {
           {latestNote && (
             <div>
               <Link
-                href={`/app/notes`}
+                href={`/app/notes/${latestNote.id}`}
                 className="text-sm font-serif font-semibold text-foreground hover:text-gold transition-colors line-clamp-1"
               >
                 {latestNote.title}
@@ -111,9 +111,10 @@ export default function DashboardPage() {
         </div>
         <div className="space-y-2">
           {recentNotes.map((note) => (
-            <div
+            <Link
               key={note.id}
-              className="rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
+              href={`/app/notes/${note.id}`}
+              className="block rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
@@ -150,7 +151,7 @@ export default function DashboardPage() {
                   {formatDate(note.createdAt)}
                 </span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

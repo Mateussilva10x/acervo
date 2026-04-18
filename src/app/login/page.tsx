@@ -42,7 +42,7 @@ export default function LoginPage() {
               Entrar
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Segundo Cérebro do Pregador
+              Acervo — Segundo Cérebro do Pregador
             </p>
           </div>
 

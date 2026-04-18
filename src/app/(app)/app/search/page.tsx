@@ -39,7 +39,7 @@ export default function SearchPage() {
 
   return (
     <div className="max-w-2xl space-y-6 animate-fade-in">
-      <h1 className="font-serif text-3xl font-bold text-foreground">Buscar</h1>
+      <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Buscar</h1>
 
       {/* Search Input */}
       <form onSubmit={handleSubmit} className="flex gap-2">
@@ -111,16 +111,16 @@ export default function SearchPage() {
               key={note.id}
               className="rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
             >
-              <div className="flex items-start justify-between gap-4 mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-gold bg-gold/10 rounded px-1.5 py-0.5">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-start gap-2 min-w-0">
+                  <span className="text-xs font-mono text-gold bg-gold/10 rounded px-1.5 py-0.5 shrink-0">
                     #{i + 1}
                   </span>
                   <h3 className="font-serif text-sm font-semibold text-foreground group-hover:text-gold transition-colors">
                     {note.title}
                   </h3>
                 </div>
-                <span className="text-xs text-muted-foreground shrink-0">
+                <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap pt-0.5">
                   {formatDate(note.createdAt)}
                 </span>
               </div>

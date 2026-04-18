@@ -8,7 +8,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-lg space-y-8 animate-fade-in">
-      <h1 className="font-serif text-3xl font-bold text-foreground">
+      <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
         Configurações
       </h1>
 
