@@ -95,7 +95,7 @@ function getNotesForVerse(
   notes: Note[],
   bookName: string,
   chapter: number,
-  verse: number
+  verse: number,
 ): Note[] {
   return notes.filter((n) =>
     n.bibleRefs.some((r) => {
@@ -103,7 +103,7 @@ function getNotesForVerse(
       if (r.verseStart === undefined) return true;
       const end = r.verseEnd ?? r.verseStart;
       return verse >= r.verseStart && verse <= end;
-    })
+    }),
   );
 }
 
@@ -143,7 +143,8 @@ function ChapterReader({
     fetch(`https://bible-api.com/${passage}?translation=${translation}`)
       .then(async (res) => {
         const data = await res.json();
-        if (!res.ok || data.error) throw new Error(data.error || `Erro ${res.status}`);
+        if (!res.ok || data.error)
+          throw new Error(data.error || `Erro ${res.status}`);
         if (!data.verses || data.verses.length === 0)
           throw new Error("Capítulo não encontrado nesta tradução.");
         setVerses(data.verses);
@@ -174,7 +175,9 @@ function ChapterReader({
 
   // Notes for this chapter (badge + per-verse icons)
   const chapterNotes = notes.filter((n) =>
-    n.bibleRefs.some((r) => r.book === currentBook.name && r.chapter === chapter)
+    n.bibleRefs.some(
+      (r) => r.book === currentBook.name && r.chapter === chapter,
+    ),
   );
 
   return (
@@ -196,12 +199,16 @@ function ChapterReader({
         >
           <optgroup label="Antigo Testamento">
             {AT_BOOKS.map((b) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
             ))}
           </optgroup>
           <optgroup label="Novo Testamento">
             {NT_BOOKS.map((b) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
             ))}
           </optgroup>
         </select>
@@ -211,9 +218,13 @@ function ChapterReader({
           onChange={(e) => onNavigate(bookId, parseInt(e.target.value))}
           className="h-9 rounded-xl border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          {Array.from({ length: currentBook.chapters }, (_, i) => i + 1).map((c) => (
-            <option key={c} value={c}>Cap. {c}</option>
-          ))}
+          {Array.from({ length: currentBook.chapters }, (_, i) => i + 1).map(
+            (c) => (
+              <option key={c} value={c}>
+                Cap. {c}
+              </option>
+            ),
+          )}
         </select>
 
         <select
@@ -231,34 +242,17 @@ function ChapterReader({
         {chapterNotes.length > 0 && (
           <span className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs text-gold font-medium">
             <FileText size={12} />
-            {chapterNotes.length} nota{chapterNotes.length !== 1 ? "s" : ""} vinculada{chapterNotes.length !== 1 ? "s" : ""}
+            {chapterNotes.length} nota{chapterNotes.length !== 1 ? "s" : ""}{" "}
+            vinculada{chapterNotes.length !== 1 ? "s" : ""}
           </span>
         )}
       </div>
 
       {/* ── Navigation row ────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3">
-        <button
-          onClick={prev}
-          disabled={isFirst}
-          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-        >
-          <ChevronLeft size={15} />
-          Anterior
-        </button>
-
         <h1 className="font-serif text-xl sm:text-2xl font-bold text-foreground text-center">
           {currentBook.name} {chapter}
         </h1>
-
-        <button
-          onClick={next}
-          disabled={isLast}
-          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-        >
-          Próximo
-          <ChevronRight size={15} />
-        </button>
       </div>
 
       {/* ── Verse card ────────────────────────────────────── */}
@@ -289,7 +283,7 @@ function ChapterReader({
                 notes,
                 currentBook.name,
                 chapter,
-                v.verse
+                v.verse,
               );
               return (
                 <span key={v.verse}>
@@ -346,14 +340,14 @@ function ReaderContent() {
 
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [translation, setTranslation] = useState(
-    searchParams.get("tr") || "almeida"
+    searchParams.get("tr") || "almeida",
   );
   const paramBook = searchParams.get("book");
   const [bookId, setBookId] = useState<number | null>(
-    paramBook ? parseInt(paramBook) : null
+    paramBook ? parseInt(paramBook) : null,
   );
   const [chapter, setChapter] = useState(
-    parseInt(searchParams.get("chapter") || "1")
+    parseInt(searchParams.get("chapter") || "1"),
   );
 
   useEffect(() => {
@@ -363,8 +357,8 @@ function ReaderContent() {
       .catch(() => {
         setTranslations([
           { short_name: "almeida", full_name: "João Ferreira de Almeida (PT)" },
-          { short_name: "web",     full_name: "World English Bible" },
-          { short_name: "kjv",     full_name: "King James Version" },
+          { short_name: "web", full_name: "World English Bible" },
+          { short_name: "kjv", full_name: "King James Version" },
         ]);
       });
   }, []);
