@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Search, Tag, BookOpen, Sparkles } from "lucide-react";
 import { searchNotes } from "@/lib/mock-data";
 import { formatDate } from "@/lib/utils";
@@ -38,8 +39,10 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="max-w-2xl space-y-6 animate-fade-in">
-      <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Buscar</h1>
+    <div className="w-full space-y-6 animate-fade-in">
+      <h1 className=" text-2xl sm:text-3xl font-bold text-foreground">
+        Buscar
+      </h1>
 
       {/* Search Input */}
       <form onSubmit={handleSubmit} className="flex gap-2">
@@ -106,50 +109,53 @@ export default function SearchPage() {
             {results.length} resultado{results.length !== 1 ? "s" : ""} para{" "}
             <span className="text-foreground">&ldquo;{query}&rdquo;</span>
           </p>
-          {results.map((note, i) => (
-            <div
-              key={note.id}
-              className="rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-start gap-2 min-w-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {results.map((note, i) => (
+              <Link
+                key={note.id}
+                href={`/app/notes/${note.id}`}
+                className="flex flex-col rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
+              >
+                <div className="flex items-center justify-between gap-2 mb-2">
                   <span className="text-xs font-mono text-gold bg-gold/10 rounded px-1.5 py-0.5 shrink-0">
                     #{i + 1}
                   </span>
-                  <h3 className="font-serif text-sm font-semibold text-foreground group-hover:text-gold transition-colors">
-                    {note.title}
-                  </h3>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatDate(note.createdAt)}
+                  </span>
                 </div>
-                <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap pt-0.5">
-                  {formatDate(note.createdAt)}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mb-3">
-                {note.content}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {note.themes.map((theme) => (
-                  <span
-                    key={theme}
-                    className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
-                  >
-                    <Tag size={9} />
-                    {theme}
-                  </span>
-                ))}
-                {note.bibleRefs.slice(0, 2).map((ref) => (
-                  <span
-                    key={`${ref.book}-${ref.chapter}`}
-                    className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
-                  >
-                    <BookOpen size={9} />
-                    {ref.book} {ref.chapter}
-                    {ref.verseStart ? `:${ref.verseStart}` : ""}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
+                <h3 className="text-sm font-semibold text-foreground group-hover:text-gold transition-colors leading-snug">
+                  {note.title}
+                </h3>
+                <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mt-1.5 flex-1">
+                  {note.content}
+                </p>
+                {(note.themes.length > 0 || note.bibleRefs.length > 0) && (
+                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border">
+                    {note.themes.slice(0, 2).map((theme) => (
+                      <span
+                        key={theme}
+                        className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
+                      >
+                        <Tag size={9} />
+                        {theme}
+                      </span>
+                    ))}
+                    {note.bibleRefs.slice(0, 1).map((ref) => (
+                      <span
+                        key={`${ref.book}-${ref.chapter}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-gold/20 bg-gold/5 px-2 py-0.5 text-xs text-gold"
+                      >
+                        <BookOpen size={9} />
+                        {ref.book} {ref.chapter}
+                        {ref.verseStart ? `:${ref.verseStart}` : ""}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

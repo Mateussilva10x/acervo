@@ -8,23 +8,75 @@ import { formatDate } from "@/lib/utils";
 import type { Note } from "@/lib/mock-data";
 
 const OT_BOOKS = [
-  "Gênesis", "Êxodo", "Levítico", "Números", "Deuteronômio",
-  "Josué", "Juízes", "Rute", "1 Samuel", "2 Samuel",
-  "1 Reis", "2 Reis", "1 Crônicas", "2 Crônicas", "Esdras",
-  "Neemias", "Ester", "Jó", "Salmos", "Provérbios",
-  "Eclesiastes", "Cânticos", "Isaías", "Jeremias", "Lamentações",
-  "Ezequiel", "Daniel", "Oseias", "Joel", "Amós",
-  "Obadias", "Jonas", "Miqueias", "Naum", "Habacuque",
-  "Sofonias", "Ageu", "Zacarias", "Malaquias",
+  "Gênesis",
+  "Êxodo",
+  "Levítico",
+  "Números",
+  "Deuteronômio",
+  "Josué",
+  "Juízes",
+  "Rute",
+  "1 Samuel",
+  "2 Samuel",
+  "1 Reis",
+  "2 Reis",
+  "1 Crônicas",
+  "2 Crônicas",
+  "Esdras",
+  "Neemias",
+  "Ester",
+  "Jó",
+  "Salmos",
+  "Provérbios",
+  "Eclesiastes",
+  "Cânticos",
+  "Isaías",
+  "Jeremias",
+  "Lamentações",
+  "Ezequiel",
+  "Daniel",
+  "Oseias",
+  "Joel",
+  "Amós",
+  "Obadias",
+  "Jonas",
+  "Miqueias",
+  "Naum",
+  "Habacuque",
+  "Sofonias",
+  "Ageu",
+  "Zacarias",
+  "Malaquias",
 ];
 
 const NT_BOOKS = [
-  "Mateus", "Marcos", "Lucas", "João", "Atos",
-  "Romanos", "1 Coríntios", "2 Coríntios", "Gálatas", "Efésios",
-  "Filipenses", "Colossenses", "1 Tessalonicenses", "2 Tessalonicenses", "1 Timóteo",
-  "2 Timóteo", "Tito", "Filemom", "Hebreus", "Tiago",
-  "1 Pedro", "2 Pedro", "1 João", "2 João", "3 João",
-  "Judas", "Apocalipse",
+  "Mateus",
+  "Marcos",
+  "Lucas",
+  "João",
+  "Atos",
+  "Romanos",
+  "1 Coríntios",
+  "2 Coríntios",
+  "Gálatas",
+  "Efésios",
+  "Filipenses",
+  "Colossenses",
+  "1 Tessalonicenses",
+  "2 Tessalonicenses",
+  "1 Timóteo",
+  "2 Timóteo",
+  "Tito",
+  "Filemom",
+  "Hebreus",
+  "Tiago",
+  "1 Pedro",
+  "2 Pedro",
+  "1 João",
+  "2 João",
+  "3 João",
+  "Judas",
+  "Apocalipse",
 ];
 
 function BookGrid({
@@ -40,7 +92,7 @@ function BookGrid({
 }) {
   return (
     <section>
-      <h2 className="font-serif text-xl font-semibold text-foreground mb-4">{title}</h2>
+      <h2 className=" text-xl font-semibold text-foreground mb-4">{title}</h2>
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-2 gap-y-4 pt-2 pr-2">
         {books.map((book) => {
           const count = getCount(book);
@@ -82,7 +134,7 @@ function BookDetail({
   onBack: () => void;
 }) {
   const bookNotes = notes.filter((n) =>
-    n.bibleRefs.some((r) => r.book === book)
+    n.bibleRefs.some((r) => r.book === book),
   );
 
   return (
@@ -96,12 +148,13 @@ function BookDetail({
           <ArrowLeft size={14} />
           Voltar
         </button>
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+        <h1 className=" text-2xl sm:text-3xl font-bold text-foreground">
           {book}
         </h1>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs text-gold font-medium">
           <BookOpen size={11} />
-          {bookNotes.length} nota{bookNotes.length !== 1 ? "s" : ""} vinculada{bookNotes.length !== 1 ? "s" : ""}
+          {bookNotes.length} nota{bookNotes.length !== 1 ? "s" : ""} vinculada
+          {bookNotes.length !== 1 ? "s" : ""}
         </span>
       </div>
 
@@ -136,7 +189,7 @@ function BookDetail({
                     {formatDate(note.createdAt)}
                   </span>
                 </div>
-                <h3 className="font-serif text-base font-semibold text-foreground group-hover:text-gold transition-colors mb-1">
+                <h3 className=" text-base font-semibold text-foreground group-hover:text-gold transition-colors mb-1">
                   {note.title}
                 </h3>
                 <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
@@ -177,7 +230,7 @@ export default function BiblePage() {
 
   return (
     <div className="space-y-10 animate-fade-in">
-      <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+      <h1 className=" text-2xl sm:text-3xl font-bold text-foreground">
         Referências Bíblicas
       </h1>
 

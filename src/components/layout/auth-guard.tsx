@@ -7,7 +7,6 @@ import { useAppStore } from "@/store/app-store";
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const token = useAppStore((s) => s.token);
   const router = useRouter();
-  // Wait for Zustand to rehydrate from localStorage before checking auth
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -20,9 +19,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated, token, router]);
 
-  // While hydrating, show nothing to avoid flash
-  if (!hydrated) return null;
-  if (!token) return null;
+  // Aguarda reidratação do Zustand para não redirecionar antes de ler o token
+  if (!hydrated || !token) return null;
 
   return <>{children}</>;
 }

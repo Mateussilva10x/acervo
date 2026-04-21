@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Loader2,
   BookOpen,
+  X,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { BIBLE_BOOKS, findBookById, toApiBookName } from "@/lib/bible-books";
@@ -43,7 +44,7 @@ function BookGrid({
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3">
+        <h1 className=" text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3">
           <BookOpen className="text-gold" size={26} />
           Ler a Bíblia
         </h1>
@@ -65,7 +66,7 @@ function BookGrid({
         { label: "Novo Testamento", books: NT_BOOKS },
       ].map(({ label, books }) => (
         <section key={label}>
-          <h2 className="font-serif text-xl font-semibold text-foreground mb-4">
+          <h2 className=" text-xl font-semibold text-foreground mb-4">
             {label}
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
@@ -104,6 +105,87 @@ function getNotesForVerse(
       const end = r.verseEnd ?? r.verseStart;
       return verse >= r.verseStart && verse <= end;
     }),
+  );
+}
+
+// ─── Note Popover ─────────────────────────────────────────────────
+function NotePopover({
+  notes,
+  onClose,
+}: {
+  notes: Note[];
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute z-50 left-0 top-6 w-72 rounded-xl border border-border bg-card shadow-xl p-0 overflow-hidden"
+      style={{ minWidth: 260 }}
+    >
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-secondary/40">
+        <span className="text-xs font-semibold text-gold uppercase tracking-wide flex items-center gap-1.5">
+          <FileText size={11} />
+          {notes.length} nota{notes.length !== 1 ? "s" : ""} vinculada{notes.length !== 1 ? "s" : ""}
+        </span>
+        <button
+          onClick={onClose}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <X size={13} />
+        </button>
+      </div>
+      <div className="divide-y divide-border max-h-64 overflow-y-auto">
+        {notes.map((n) => (
+          <Link
+            key={n.id}
+            href={`/app/notes/${n.id}`}
+            onClick={onClose}
+            className="block px-4 py-3 hover:bg-secondary/50 transition-colors group"
+          >
+            <p className="text-sm font-medium text-foreground group-hover:text-gold transition-colors line-clamp-1">
+              {n.title}
+            </p>
+            {n.content && (
+              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
+                {n.content}
+              </p>
+            )}
+            <span className="text-xs text-gold mt-1 inline-block">
+              Ver nota →
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Verse Note Button ────────────────────────────────────────────
+function VerseNoteButton({ notes }: { notes: Note[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex align-middle ml-1">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        title={`${notes.length} nota${notes.length !== 1 ? "s" : ""} vinculada${notes.length !== 1 ? "s" : ""}`}
+        className="inline-flex items-center justify-center text-gold hover:text-gold-dark transition-colors"
+      >
+        <FileText size={12} />
+      </button>
+      {open && <NotePopover notes={notes} onClose={() => setOpen(false)} />}
+    </span>
   );
 }
 
@@ -181,66 +263,70 @@ function ChapterReader({
   );
 
   return (
-    <div className="max-w-3xl space-y-4 animate-fade-in">
-      {/* ── Controls bar ─────────────────────────────────── */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
-        >
-          <ChevronLeft size={15} />
-          Voltar
-        </button>
+    <div className="w-full space-y-4 animate-fade-in">
+      {/* ── Controls bar (mobile-first) ───────────────────── */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
+        {/* Row 1 (mobile): Voltar + book + chapter selects */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+          >
+            <ChevronLeft size={15} />
+            Voltar
+          </button>
 
-        <select
-          value={bookId}
-          onChange={(e) => onNavigate(parseInt(e.target.value), 1)}
-          className="h-9 rounded-xl border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <optgroup label="Antigo Testamento">
-            {AT_BOOKS.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
+          <select
+            value={bookId}
+            onChange={(e) => onNavigate(parseInt(e.target.value), 1)}
+            className="flex-1 min-w-[110px] h-9 rounded-xl border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <optgroup label="Antigo Testamento">
+              {AT_BOOKS.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Novo Testamento">
+              {NT_BOOKS.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+
+          <select
+            value={chapter}
+            onChange={(e) => onNavigate(bookId, parseInt(e.target.value))}
+            className="h-9 rounded-xl border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            {Array.from({ length: currentBook.chapters }, (_, i) => i + 1).map(
+              (c) => (
+                <option key={c} value={c}>
+                  Cap. {c}
+                </option>
+              ),
+            )}
+          </select>
+
+          <select
+            value={translation}
+            onChange={(e) => onTranslationChange(e.target.value)}
+            className="h-9 rounded-xl border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            {translations.map((t) => (
+              <option key={t.short_name} value={t.short_name}>
+                {t.short_name.toUpperCase()}
               </option>
             ))}
-          </optgroup>
-          <optgroup label="Novo Testamento">
-            {NT_BOOKS.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </optgroup>
-        </select>
+          </select>
+        </div>
 
-        <select
-          value={chapter}
-          onChange={(e) => onNavigate(bookId, parseInt(e.target.value))}
-          className="h-9 rounded-xl border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          {Array.from({ length: currentBook.chapters }, (_, i) => i + 1).map(
-            (c) => (
-              <option key={c} value={c}>
-                Cap. {c}
-              </option>
-            ),
-          )}
-        </select>
-
-        <select
-          value={translation}
-          onChange={(e) => onTranslationChange(e.target.value)}
-          className="h-9 rounded-xl border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          {translations.map((t) => (
-            <option key={t.short_name} value={t.short_name}>
-              {t.short_name.toUpperCase()}
-            </option>
-          ))}
-        </select>
-
+        {/* Badge notas – fica no canto direito em desktop, linha separada mobile */}
         {chapterNotes.length > 0 && (
-          <span className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs text-gold font-medium">
+          <span className="self-start sm:ml-auto inline-flex items-center gap-1.5 rounded-xl border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs text-gold font-medium">
             <FileText size={12} />
             {chapterNotes.length} nota{chapterNotes.length !== 1 ? "s" : ""}{" "}
             vinculada{chapterNotes.length !== 1 ? "s" : ""}
@@ -248,11 +334,29 @@ function ChapterReader({
         )}
       </div>
 
-      {/* ── Navigation row ────────────────────────────────── */}
+      {/* ── Navigation row: Anterior | Título | Próximo ───── */}
       <div className="flex items-center justify-between gap-3">
-        <h1 className="font-serif text-xl sm:text-2xl font-bold text-foreground text-center">
+        <button
+          onClick={prev}
+          disabled={isFirst}
+          className="inline-flex items-center gap-1 h-9 px-3 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+        >
+          <ChevronLeft size={15} />
+          <span className="hidden sm:inline">Anterior</span>
+        </button>
+
+        <h1 className="text-lg sm:text-2xl font-bold text-foreground text-center flex-1">
           {currentBook.name} {chapter}
         </h1>
+
+        <button
+          onClick={next}
+          disabled={isLast}
+          className="inline-flex items-center gap-1 h-9 px-3 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+        >
+          <span className="hidden sm:inline">Próximo</span>
+          <ChevronRight size={15} />
+        </button>
       </div>
 
       {/* ── Verse card ────────────────────────────────────── */}
@@ -277,7 +381,7 @@ function ChapterReader({
         )}
 
         {!loading && !error && verses.length > 0 && (
-          <p className="text-sm sm:text-base text-foreground leading-[2.2] tracking-wide">
+          <div className="text-sm sm:text-base text-foreground leading-[2.4] tracking-wide">
             {verses.map((v) => {
               const verseNotes = getNotesForVerse(
                 notes,
@@ -285,26 +389,33 @@ function ChapterReader({
                 chapter,
                 v.verse,
               );
+              const hasNotes = verseNotes.length > 0;
               return (
-                <span key={v.verse}>
+                <span
+                  key={v.verse}
+                  className={
+                    hasNotes
+                      ? "inline rounded px-0.5 py-px"
+                      : undefined
+                  }
+                  style={
+                    hasNotes
+                      ? {
+                          backgroundColor: "rgba(194,163,112,0.15)",
+                          boxShadow: "0 0 0 1.5px rgba(194,163,112,0.35)",
+                        }
+                      : undefined
+                  }
+                >
                   <sup className="text-gold text-[10px] font-bold mr-0.5 select-none">
                     {v.verse}
                   </sup>
                   {v.text.trim()}
-                  {verseNotes.map((n) => (
-                    <Link
-                      key={n.id}
-                      href={`/app/notes/${n.id}`}
-                      title={n.title}
-                      className="inline-flex items-center justify-center ml-1 text-gold hover:text-gold-dark transition-colors align-middle"
-                    >
-                      <FileText size={12} />
-                    </Link>
-                  ))}{" "}
+                  {hasNotes && <VerseNoteButton notes={verseNotes} />}{" "}
                 </span>
               );
             })}
-          </p>
+          </div>
         )}
       </div>
 

@@ -1,50 +1,81 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAppStore } from "@/store/app-store";
-import { Sun, Moon, User, Bell } from "lucide-react";
+import { authApi, ApiError } from "@/lib/api";
+import { Sun, Moon, User, Bell, Loader2 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 
 export default function SettingsPage() {
-  const { user, darkMode, toggleDarkMode } = useAppStore();
+  const { token, user, setAuth, darkMode, toggleDarkMode } = useAppStore();
+  const [loadingUser, setLoadingUser] = useState(false);
+  const [userError, setUserError] = useState("");
+
+  // Carrega dados do usuário via /me apenas nessa tela
+  useEffect(() => {
+    if (!token || user) return; // já tem dados ou sem token
+    setLoadingUser(true);
+    setUserError("");
+    authApi
+      .me(token)
+      .then((freshUser) => setAuth(token, freshUser))
+      .catch((err) => {
+        if (err instanceof ApiError) {
+          setUserError(`Erro ao carregar perfil (${err.status}).`);
+        } else {
+          setUserError("Não foi possível conectar ao servidor.");
+        }
+      })
+      .finally(() => setLoadingUser(false));
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="max-w-lg space-y-8 animate-fade-in">
-      <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+    <div className="w-full max-w-lg space-y-8 animate-fade-in">
+      <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
         Configurações
       </h1>
 
-      {/* Profile */}
+      {/* Perfil */}
       <section className="rounded-xl border border-border bg-card p-6 space-y-4">
-        <h2 className="font-serif text-lg font-semibold text-foreground flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <User size={16} className="text-gold" />
           Perfil
         </h2>
-        <div className="space-y-3">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Nome</p>
-            <p className="text-sm text-foreground font-medium">{user?.name}</p>
+
+        {loadingUser ? (
+          <div className="flex items-center gap-2 text-muted-foreground py-2">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-sm">Carregando perfil...</span>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">E-mail</p>
-            <p className="text-sm text-foreground">{user?.email}</p>
+        ) : userError ? (
+          <p className="text-sm text-destructive">{userError}</p>
+        ) : (
+          <div className="divide-y divide-border">
+            <div className="py-3 first:pt-0">
+              <p className="text-xs text-muted-foreground mb-0.5">Nome</p>
+              <p className="text-sm text-foreground font-medium">
+                {user?.name ?? "—"}
+              </p>
+            </div>
+            <div className="py-3">
+              <p className="text-xs text-muted-foreground mb-0.5">E-mail</p>
+              <p className="text-sm text-foreground">{user?.email ?? "—"}</p>
+            </div>
+            <div className="py-3 last:pb-0">
+              <p className="text-xs text-muted-foreground mb-0.5">
+                Data de nascimento
+              </p>
+              <p className="text-sm text-foreground">
+                {user?.birthDate ? formatDate(user.birthDate) : "—"}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Igreja</p>
-            <p className="text-sm text-foreground">{user?.church || "—"}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Plano</p>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full border border-gold/30 text-gold text-xs font-medium capitalize">
-              {user?.plan}
-            </span>
-          </div>
-        </div>
+        )}
       </section>
 
-      {/* Appearance */}
+      {/* Aparência */}
       <section className="rounded-xl border border-border bg-card p-6 space-y-4">
-        <h2 className="font-serif text-lg font-semibold text-foreground">
-          Aparência
-        </h2>
+        <h2 className="text-lg font-semibold text-foreground">Aparência</h2>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {darkMode ? (
@@ -76,9 +107,9 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Notifications */}
+      {/* Notificações */}
       <section className="rounded-xl border border-border bg-card p-6 space-y-4">
-        <h2 className="font-serif text-lg font-semibold text-foreground flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Bell size={16} className="text-gold" />
           Notificações
         </h2>

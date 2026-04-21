@@ -46,7 +46,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <div className="px-4 py-5 border-b border-sidebar-border">
         <Link href="/app/dashboard" className="flex items-center gap-2">
           <BookMarked className="text-gold" size={20} />
-          <span className="font-serif text-base font-semibold text-foreground">
+          <span className=" text-base font-semibold text-foreground">
             Acervo
           </span>
         </Link>
@@ -68,7 +68,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-100",
                 active
                   ? "bg-sidebar-accent text-foreground font-medium"
-                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
               )}
             >
               <Icon size={16} className={active ? "text-gold" : ""} />

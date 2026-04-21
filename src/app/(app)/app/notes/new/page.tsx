@@ -28,7 +28,7 @@ export default function NewNotePage() {
 
   function toggleTheme(theme: string) {
     setSelectedThemes((prev) =>
-      prev.includes(theme) ? prev.filter((t) => t !== theme) : [...prev, theme]
+      prev.includes(theme) ? prev.filter((t) => t !== theme) : [...prev, theme],
     );
   }
 
@@ -57,7 +57,9 @@ export default function NewNotePage() {
             {
               book: bibleBook,
               chapter: parseInt(bibleChapter) || 1,
-              verseStart: bibleVerseStart ? parseInt(bibleVerseStart) : undefined,
+              verseStart: bibleVerseStart
+                ? parseInt(bibleVerseStart)
+                : undefined,
               verseEnd: bibleVerseEnd ? parseInt(bibleVerseEnd) : undefined,
             },
           ]
@@ -79,10 +81,8 @@ export default function NewNotePage() {
   ];
 
   return (
-    <div className="max-w-2xl space-y-6 animate-fade-in">
-      <h1 className="font-serif text-3xl font-bold text-foreground">
-        Nova Nota
-      </h1>
+    <div className="w-full max-w-3xl space-y-6 animate-fade-in">
+      <h1 className=" text-3xl font-bold text-foreground">Nova Nota</h1>
 
       {/* Tabs */}
       <div className="flex gap-2 flex-wrap">
@@ -94,7 +94,7 @@ export default function NewNotePage() {
               "inline-flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-medium transition-colors",
               tab === id
                 ? "bg-gold text-primary-foreground"
-                : "border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+                : "border border-border text-muted-foreground hover:text-foreground hover:bg-secondary",
             )}
           >
             <Icon size={14} />
@@ -106,13 +106,15 @@ export default function NewNotePage() {
       {tab === "text" && (
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="rounded-xl border border-border bg-card p-6 space-y-5">
-            <h2 className="font-serif text-lg font-semibold text-foreground">
+            <h2 className=" text-lg font-semibold text-foreground">
               Escrever Texto
             </h2>
 
             {/* Title */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Título</label>
+              <label className="text-sm font-medium text-foreground">
+                Título
+              </label>
               <input
                 type="text"
                 value={title}
@@ -125,7 +127,9 @@ export default function NewNotePage() {
 
             {/* Content */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Conteúdo</label>
+              <label className="text-sm font-medium text-foreground">
+                Conteúdo
+              </label>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
@@ -137,7 +141,9 @@ export default function NewNotePage() {
 
             {/* Location */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Local</label>
+              <label className="text-sm font-medium text-foreground">
+                Local
+              </label>
               <input
                 type="text"
                 value={location}
@@ -149,7 +155,9 @@ export default function NewNotePage() {
 
             {/* Themes */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Temas</label>
+              <label className="text-sm font-medium text-foreground">
+                Temas
+              </label>
               <div className="flex flex-wrap gap-2">
                 {THEMES.map((theme) => (
                   <button
@@ -160,7 +168,7 @@ export default function NewNotePage() {
                       "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors border",
                       selectedThemes.includes(theme)
                         ? "bg-gold/20 border-gold/40 text-gold"
-                        : "border-border text-muted-foreground hover:border-gold/40 hover:text-gold"
+                        : "border-border text-muted-foreground hover:border-gold/40 hover:text-gold",
                     )}
                   >
                     {selectedThemes.includes(theme) && <Check size={10} />}
@@ -173,7 +181,9 @@ export default function NewNotePage() {
                   type="text"
                   value={newTheme}
                   onChange={(e) => setNewTheme(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTheme())}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && (e.preventDefault(), handleAddTheme())
+                  }
                   placeholder="Adicionar Tema"
                   className="flex-1 rounded-xl border border-input bg-transparent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
                 />

@@ -3,7 +3,18 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Tag, BookOpen, MapPin, Calendar, Trash2, Pencil, AlertTriangle, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Tag,
+  BookOpen,
+  MapPin,
+  Calendar,
+  Trash2,
+  Pencil,
+  AlertTriangle,
+  X,
+  FileText,
+} from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { formatDate } from "@/lib/utils";
 import { readerUrl } from "@/lib/bible-books";
@@ -19,12 +30,10 @@ function DeleteModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onCancel}
       />
-      {/* Modal */}
       <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
         <button
           onClick={onCancel}
@@ -39,7 +48,7 @@ function DeleteModal({
           </div>
 
           <div>
-            <h2 className="font-serif text-lg font-semibold text-foreground mb-1">
+            <h2 className="text-lg font-semibold text-foreground mb-1">
               Deletar nota?
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -86,6 +95,7 @@ export default function NoteDetailPage({
   if (!note) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <FileText size={40} className="text-muted-foreground/40" />
         <p className="text-muted-foreground">Nota não encontrada.</p>
         <Link
           href="/app/notes"
@@ -112,91 +122,97 @@ export default function NoteDetailPage({
         />
       )}
 
-      <div className="max-w-2xl space-y-6 animate-fade-in">
-        {/* Back */}
-        <Link
-          href="/app/notes"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft size={14} />
-          Todas as notas
-        </Link>
+      <div className="space-y-4 animate-fade-in">
+        {/* Top action bar */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <Link
+            href="/app/notes"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft size={14} />
+            Todas as notas
+          </Link>
 
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground leading-tight">
-            {note.title}
-          </h1>
-          <div className="flex items-center gap-2 shrink-0 pt-1">
+          <div className="flex items-center gap-2">
             <Link
               href={`/app/notes/${id}/edit`}
-              className="h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >
-              <Pencil size={14} />
+              <Pencil size={13} />
+              Editar
             </Link>
             <button
               onClick={() => setShowDeleteModal(true)}
-              className="h-8 w-8 flex items-center justify-center rounded-lg border border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-xl border border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground text-sm transition-colors"
             >
-              <Trash2 size={14} />
+              <Trash2 size={13} />
+              Excluir
             </button>
           </div>
         </div>
 
-        {/* Meta */}
-        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <Calendar size={12} />
-            {formatDate(note.createdAt)}
-          </span>
-          {note.location && (
-            <span className="flex items-center gap-1.5">
-              <MapPin size={12} />
-              {note.location}
-            </span>
-          )}
-        </div>
+        {/* Main note card */}
+        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+          {/* Card header: title + meta */}
+          <div className="px-6 py-6 sm:px-8 sm:py-7 border-b border-border">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight mb-4">
+              {note.title}
+            </h1>
 
-        {/* Tags */}
-        <div className="flex flex-wrap gap-2">
-          {note.themes.map((theme) => (
-            <Link
-              key={theme}
-              href={`/app/themes?tag=${encodeURIComponent(theme)}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold transition-colors"
-            >
-              <Tag size={10} />
-              {theme}
-            </Link>
-          ))}
-        </div>
-
-        {/* Bible Refs */}
-        {note.bibleRefs.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {note.bibleRefs.map((ref) => (
-              <Link
-                key={`${ref.book}-${ref.chapter}`}
-                href={readerUrl(ref.book, ref.chapter)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold transition-colors"
-              >
-                <BookOpen size={10} />
-                {ref.book} {ref.chapter}
-                {ref.verseStart ? `:${ref.verseStart}` : ""}
-                {ref.verseEnd ? `–${ref.verseEnd}` : ""}
-              </Link>
-            ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary border border-border px-3 py-1 text-xs text-muted-foreground">
+                <Calendar size={11} />
+                {formatDate(note.createdAt)}
+              </span>
+              {note.location && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary border border-border px-3 py-1 text-xs text-muted-foreground">
+                  <MapPin size={11} />
+                  {note.location}
+                </span>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Divider */}
-        <div className="h-px bg-border" />
+          {/* Tags + Bible refs */}
+          {(note.themes.length > 0 || note.bibleRefs.length > 0) && (
+            <div className="px-6 py-4 sm:px-8 border-b border-border flex flex-wrap gap-2">
+              {note.themes.map((theme) => (
+                <Link
+                  key={theme}
+                  href={`/app/themes?tag=${encodeURIComponent(theme)}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:border-gold/40 hover:text-gold transition-colors"
+                >
+                  <Tag size={10} />
+                  {theme}
+                </Link>
+              ))}
+              {note.bibleRefs.map((ref) => (
+                <Link
+                  key={`${ref.book}-${ref.chapter}`}
+                  href={readerUrl(ref.book, ref.chapter)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold/5 px-3 py-1 text-xs text-gold hover:bg-gold/10 transition-colors"
+                >
+                  <BookOpen size={10} />
+                  {ref.book} {ref.chapter}
+                  {ref.verseStart ? `:${ref.verseStart}` : ""}
+                  {ref.verseEnd ? `–${ref.verseEnd}` : ""}
+                </Link>
+              ))}
+            </div>
+          )}
 
-        {/* Content */}
-        <div className="rounded-xl border border-border bg-card p-6">
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-            {note.content}
-          </p>
+          {/* Content body */}
+          <div className="px-6 py-6 sm:px-8 sm:py-7">
+            {note.content ? (
+              <p className="text-sm sm:text-base text-foreground leading-relaxed whitespace-pre-wrap">
+                {note.content}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                Sem conteúdo escrito.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </>

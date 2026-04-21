@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Tag, BookOpen } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { getThemeCounts } from "@/lib/mock-data";
@@ -19,7 +20,7 @@ function ThemesContent() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Temas</h1>
+      <h1 className=" text-2xl sm:text-3xl font-bold text-foreground">Temas</h1>
 
       {/* Tags Cloud */}
       <div className="flex flex-wrap gap-2">
@@ -45,45 +46,46 @@ function ThemesContent() {
       {/* Notes filtered by tag */}
       {activeTag && (
         <div>
-          <h2 className="font-serif text-xl font-semibold text-foreground mb-4">
+          <h2 className=" text-xl font-semibold text-foreground mb-4">
             Notas em &ldquo;{activeTag}&rdquo;
             <span className="text-sm text-muted-foreground font-normal ml-2">
               ({filteredNotes.length})
             </span>
           </h2>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {filteredNotes.map((note) => (
-              <div
+              <Link
                 key={note.id}
-                className="rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
+                href={`/app/notes/${note.id}`}
+                className="flex flex-col rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-serif text-sm font-semibold text-foreground group-hover:text-gold transition-colors">
-                      {note.title}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-                      {note.content}
-                    </p>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {note.bibleRefs.map((ref) => (
-                        <span
-                          key={`${ref.book}-${ref.chapter}`}
-                          className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
-                        >
-                          <BookOpen size={10} />
-                          {ref.book} {ref.chapter}
-                          {ref.verseStart ? `:${ref.verseStart}` : ""}
-                          {ref.verseEnd ? `-${ref.verseEnd}` : ""}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs text-muted-foreground">
                     {formatDate(note.createdAt)}
                   </span>
                 </div>
-              </div>
+                <h3 className="text-sm font-semibold text-foreground group-hover:text-gold transition-colors leading-snug">
+                  {note.title}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1.5 line-clamp-3 leading-relaxed flex-1">
+                  {note.content}
+                </p>
+                {note.bibleRefs.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border">
+                    {note.bibleRefs.map((ref) => (
+                      <span
+                        key={`${ref.book}-${ref.chapter}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-gold/20 bg-gold/5 px-2 py-0.5 text-xs text-gold"
+                      >
+                        <BookOpen size={9} />
+                        {ref.book} {ref.chapter}
+                        {ref.verseStart ? `:${ref.verseStart}` : ""}
+                        {ref.verseEnd ? `-${ref.verseEnd}` : ""}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </Link>
             ))}
           </div>
         </div>

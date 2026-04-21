@@ -23,15 +23,15 @@ export default function EditNotePage({
   const [content, setContent] = useState(note?.content ?? "");
   const [location, setLocation] = useState(note?.location ?? "");
   const [selectedThemes, setSelectedThemes] = useState<string[]>(
-    note?.themes ?? []
+    note?.themes ?? [],
   );
   const [newTheme, setNewTheme] = useState("");
   const [bibleBook, setBibleBook] = useState(note?.bibleRefs[0]?.book ?? "");
   const [bibleChapter, setBibleChapter] = useState(
-    note?.bibleRefs[0]?.chapter?.toString() ?? ""
+    note?.bibleRefs[0]?.chapter?.toString() ?? "",
   );
   const [bibleVerseStart, setBibleVerseStart] = useState(
-    note?.bibleRefs[0]?.verseStart?.toString() ?? ""
+    note?.bibleRefs[0]?.verseStart?.toString() ?? "",
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -52,7 +52,7 @@ export default function EditNotePage({
 
   function toggleTheme(theme: string) {
     setSelectedThemes((prev) =>
-      prev.includes(theme) ? prev.filter((t) => t !== theme) : [...prev, theme]
+      prev.includes(theme) ? prev.filter((t) => t !== theme) : [...prev, theme],
     );
   }
 
@@ -97,7 +97,7 @@ export default function EditNotePage({
   }
 
   return (
-    <div className="max-w-2xl space-y-6 animate-fade-in">
+    <div className="w-full max-w-3xl space-y-6 animate-fade-in">
       <Link
         href={`/app/notes/${id}`}
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -106,15 +106,15 @@ export default function EditNotePage({
         Voltar
       </Link>
 
-      <h1 className="font-serif text-3xl font-bold text-foreground">
-        Editar Nota
-      </h1>
+      <h1 className=" text-3xl font-bold text-foreground">Editar Nota</h1>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="rounded-xl border border-border bg-card p-6 space-y-5">
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Título</label>
+            <label className="text-sm font-medium text-foreground">
+              Título
+            </label>
             <input
               type="text"
               value={title}
@@ -127,7 +127,9 @@ export default function EditNotePage({
 
           {/* Content */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Conteúdo</label>
+            <label className="text-sm font-medium text-foreground">
+              Conteúdo
+            </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -162,7 +164,7 @@ export default function EditNotePage({
                     "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors border",
                     selectedThemes.includes(theme)
                       ? "bg-gold/20 border-gold/40 text-gold"
-                      : "border-border text-muted-foreground hover:border-gold/40 hover:text-gold"
+                      : "border-border text-muted-foreground hover:border-gold/40 hover:text-gold",
                   )}
                 >
                   {selectedThemes.includes(theme) && <Check size={10} />}

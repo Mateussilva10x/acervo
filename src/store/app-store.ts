@@ -9,7 +9,7 @@ interface AppState {
   // Auth
   token: string | null;
   user: User | null;
-  setAuth: (token: string, user: User) => void;
+  setAuth: (token: string, user: User | null) => void;
   logout: () => void;
 
   // Dark Mode
@@ -29,8 +29,24 @@ export const useAppStore = create<AppState>()(
       // Auth
       token: null,
       user: null,
-      setAuth: (token, user) => set({ token, user }),
-      logout: () => set({ token: null, user: null }),
+      setAuth: (token, user) => {
+        // Sincroniza com cookie para o middleware conseguir ler server-side
+        if (typeof document !== "undefined") {
+          const expires = new Date(
+            Date.now() + 7 * 24 * 60 * 60 * 1000,
+          ).toUTCString();
+          document.cookie = `acervo-token=${token}; path=/; expires=${expires}; SameSite=Lax`;
+        }
+        set({ token, user });
+      },
+      logout: () => {
+        // Remove cookie
+        if (typeof document !== "undefined") {
+          document.cookie =
+            "acervo-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        }
+        set({ token: null, user: null });
+      },
 
       // Dark Mode
       darkMode: true,

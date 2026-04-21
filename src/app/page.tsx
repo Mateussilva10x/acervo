@@ -14,15 +14,13 @@ import {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-parchment">
+    <div className="min-h-screen bg-parchment font-sans">
       {/* Navbar */}
       <header className="sticky top-0 z-50 bg-parchment/90 backdrop-blur-sm border-b border-border">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <BookMarked className="text-gold" size={20} />
-            <span className="font-serif text-lg font-semibold text-leather">
-              Acervo
-            </span>
+            <span className=" text-lg font-semibold text-leather">Acervo</span>
           </Link>
           <nav className="flex items-center gap-4">
             <Link
@@ -43,14 +41,14 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-24 pb-20 text-center">
-        <h1 className="font-serif text-5xl md:text-6xl font-bold text-leather leading-tight mb-6">
+        <h1 className=" text-5xl md:text-6xl font-bold text-leather leading-tight mb-6">
           Acervo — O Segundo Cérebro
           <br />
           do Pregador
         </h1>
         <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-10 leading-relaxed">
-          Capture, organize e encontre suas anotações, ilustrações e
-          referências bíblicas com inteligência artificial.
+          Capture, organize e encontre suas anotações, ilustrações e referências
+          bíblicas com inteligência artificial.
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <Link
@@ -71,7 +69,7 @@ export default function LandingPage() {
 
       {/* Features */}
       <section className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="font-serif text-3xl font-semibold text-leather text-center mb-12">
+        <h2 className=" text-3xl font-semibold text-leather text-center mb-12">
           Tudo que você precisa para seus sermões
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -104,7 +102,7 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center">
                 <Icon size={20} className="text-gold" />
               </div>
-              <h3 className="font-serif text-lg font-semibold text-foreground">
+              <h3 className=" text-lg font-semibold text-foreground">
                 {title}
               </h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
@@ -117,7 +115,7 @@ export default function LandingPage() {
 
       {/* Como Funciona */}
       <section className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="font-serif text-3xl font-semibold text-leather text-center mb-4">
+        <h2 className=" text-3xl font-semibold text-leather text-center mb-4">
           Como funciona
         </h2>
         <p className="text-muted-foreground text-center mb-12 max-w-lg mx-auto">
@@ -144,14 +142,17 @@ export default function LandingPage() {
               desc: "Busque por intenção, tema ou referência. Recupere exatamente o que precisa, quando precisa.",
             },
           ].map(({ step, icon: Icon, title, desc }) => (
-            <div key={step} className="relative flex flex-col items-center text-center">
-              <div className="text-5xl font-serif font-bold text-gold/20 mb-4">
+            <div
+              key={step}
+              className="relative flex flex-col items-center text-center"
+            >
+              <div className="text-5xl  font-bold text-gold/20 mb-4">
                 {step}
               </div>
               <div className="w-12 h-12 rounded-full border-2 border-gold/30 bg-gold/10 flex items-center justify-center mb-4">
                 <Icon size={20} className="text-gold" />
               </div>
-              <h3 className="font-serif text-xl font-semibold text-foreground mb-2">
+              <h3 className=" text-xl font-semibold text-foreground mb-2">
                 {title}
               </h3>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
@@ -164,7 +165,7 @@ export default function LandingPage() {
 
       {/* Prova Social */}
       <section className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="font-serif text-3xl font-semibold text-leather text-center mb-12">
+        <h2 className=" text-3xl font-semibold text-leather text-center mb-12">
           O que dizem os pastores
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -185,7 +186,10 @@ export default function LandingPage() {
               text: "Em 20 anos de ministério, nunca tive uma ferramenta assim. É como ter um assistente pessoal que conhece toda a minha biblioteca.",
             },
           ].map(({ name, church, text }) => (
-            <div key={name} className="rounded-xl border border-border bg-card p-6">
+            <div
+              key={name}
+              className="rounded-xl border border-border bg-card p-6"
+            >
               <div className="flex gap-0.5 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} size={14} className="fill-gold text-gold" />
@@ -205,20 +209,20 @@ export default function LandingPage() {
 
       {/* Pricing */}
       <section className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="font-serif text-3xl font-semibold text-leather text-center mb-12">
+        <h2 className=" text-3xl font-semibold text-leather text-center mb-12">
           Planos
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           {/* Free */}
           <div className="rounded-xl border border-border bg-card p-8">
-            <h3 className="font-serif text-xl font-semibold text-foreground mb-1">
+            <h3 className=" text-xl font-semibold text-foreground mb-1">
               Gratuito
             </h3>
             <p className="text-sm text-muted-foreground mb-6">
               Para começar a organizar
             </p>
             <div className="mb-6">
-              <span className="font-serif text-4xl font-bold text-foreground">
+              <span className=" text-4xl font-bold text-foreground">
                 R$&nbsp;0
               </span>
               <span className="text-muted-foreground text-sm">/mês</span>
@@ -226,11 +230,14 @@ export default function LandingPage() {
             <ul className="space-y-3 mb-8">
               {["Até 50 notas", "Busca simples", "Categorização manual"].map(
                 (f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-foreground">
+                  <li
+                    key={f}
+                    className="flex items-center gap-2 text-sm text-foreground"
+                  >
                     <Check size={14} className="text-gold shrink-0" />
                     {f}
                   </li>
-                )
+                ),
               )}
             </ul>
             <Link
@@ -246,14 +253,12 @@ export default function LandingPage() {
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gold text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
               Popular
             </div>
-            <h3 className="font-serif text-xl font-semibold text-foreground mb-1">
-              Pro
-            </h3>
+            <h3 className=" text-xl font-semibold text-foreground mb-1">Pro</h3>
             <p className="text-sm text-muted-foreground mb-6">
               Para pregadores dedicados
             </p>
             <div className="mb-6">
-              <span className="font-serif text-4xl font-bold text-foreground">
+              <span className=" text-4xl font-bold text-foreground">
                 R$&nbsp;39
               </span>
               <span className="text-muted-foreground text-sm">/mês</span>
@@ -266,7 +271,10 @@ export default function LandingPage() {
                 "OCR de imagens",
                 "Exportação PDF",
               ].map((f) => (
-                <li key={f} className="flex items-center gap-2 text-sm text-foreground">
+                <li
+                  key={f}
+                  className="flex items-center gap-2 text-sm text-foreground"
+                >
                   <Check size={14} className="text-gold shrink-0" />
                   {f}
                 </li>
@@ -282,14 +290,14 @@ export default function LandingPage() {
 
           {/* Igreja */}
           <div className="rounded-xl border border-border bg-card p-8">
-            <h3 className="font-serif text-xl font-semibold text-foreground mb-1">
+            <h3 className=" text-xl font-semibold text-foreground mb-1">
               Igreja
             </h3>
             <p className="text-sm text-muted-foreground mb-6">
               Para equipes pastorais
             </p>
             <div className="mb-6">
-              <span className="font-serif text-4xl font-bold text-foreground">
+              <span className=" text-4xl font-bold text-foreground">
                 R$&nbsp;99
               </span>
               <span className="text-muted-foreground text-sm">/mês</span>
@@ -301,7 +309,10 @@ export default function LandingPage() {
                 "Múltiplos usuários",
                 "Suporte prioritário",
               ].map((f) => (
-                <li key={f} className="flex items-center gap-2 text-sm text-foreground">
+                <li
+                  key={f}
+                  className="flex items-center gap-2 text-sm text-foreground"
+                >
                   <Check size={14} className="text-gold shrink-0" />
                   {f}
                 </li>
@@ -319,12 +330,12 @@ export default function LandingPage() {
 
       {/* CTA Final */}
       <section className="max-w-6xl mx-auto px-6 py-20 text-center">
-        <h2 className="font-serif text-4xl font-bold text-leather mb-4">
+        <h2 className=" text-4xl font-bold text-leather mb-4">
           Comece hoje mesmo
         </h2>
         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-          Junte-se a centenas de pastores que já organizam seus sermões de
-          forma inteligente.
+          Junte-se a centenas de pastores que já organizam seus sermões de forma
+          inteligente.
         </p>
         <Link
           href="/register"

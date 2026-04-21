@@ -23,7 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className={cn(
           "fixed inset-y-0 left-0 z-30 transition-transform duration-200 ease-in-out",
           "md:relative md:z-auto md:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}
       >
         <Sidebar onNavigate={() => setSidebarOpen(false)} />
@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
           <div className="flex items-center gap-2">
             <BookMarked className="text-gold" size={18} />
-            <span className="font-serif text-base font-semibold text-foreground">
+            <span className=" text-base font-semibold text-foreground">
               Acervo
             </span>
           </div>

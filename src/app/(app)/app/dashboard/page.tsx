@@ -21,14 +21,11 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+        <h1 className=" text-2xl sm:text-3xl font-bold text-foreground">
           Bem-vindo de volta, {user?.name ?? "Pastor"}!
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          {user?.church ?? "Sua Igreja"} · Plano:{" "}
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-gold/30 text-gold text-xs font-medium capitalize">
-            {user?.plan ?? "Pro"}
-          </span>
+          {user?.email ?? ""}
         </p>
       </div>
 
@@ -38,7 +35,7 @@ export default function DashboardPage() {
         <div className="rounded-xl border border-border bg-card p-5 flex items-start justify-between">
           <div>
             <p className="text-xs text-muted-foreground mb-1">Total de Notas</p>
-            <p className="font-serif text-4xl font-bold text-foreground">
+            <p className=" text-4xl font-bold text-foreground">
               {notes.length}
             </p>
           </div>
@@ -74,7 +71,7 @@ export default function DashboardPage() {
             <div>
               <Link
                 href={`/app/notes/${latestNote.id}`}
-                className="text-sm font-serif font-semibold text-foreground hover:text-gold transition-colors line-clamp-1"
+                className="text-sm  font-semibold text-foreground hover:text-gold transition-colors line-clamp-1"
               >
                 {latestNote.title}
               </Link>
@@ -92,14 +89,17 @@ export default function DashboardPage() {
         href="/app/notes/new"
         className="flex items-center justify-center gap-3 w-full rounded-xl border border-dashed border-gold/40 p-4 text-gold hover:bg-gold/5 transition-colors group"
       >
-        <Plus size={18} className="group-hover:scale-110 transition-transform" />
+        <Plus
+          size={18}
+          className="group-hover:scale-110 transition-transform"
+        />
         <span className="font-medium text-sm">Captura Rápida</span>
       </Link>
 
       {/* Recent Notes */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-serif text-xl font-semibold text-foreground">
+          <h2 className=" text-xl font-semibold text-foreground">
             Notas Recentes
           </h2>
           <Link
@@ -109,48 +109,47 @@ export default function DashboardPage() {
             Ver Todas
           </Link>
         </div>
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {recentNotes.map((note) => (
             <Link
               key={note.id}
               href={`/app/notes/${note.id}`}
-              className="block rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
+              className="flex flex-col rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-serif text-sm font-semibold text-foreground group-hover:text-gold transition-colors truncate">
-                    {note.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-                    {note.content}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {note.themes.map((theme) => (
-                      <span
-                        key={theme}
-                        className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
-                      >
-                        <Tag size={10} />
-                        {theme}
-                      </span>
-                    ))}
-                    {note.bibleRefs.slice(0, 1).map((ref) => (
-                      <span
-                        key={`${ref.book}-${ref.chapter}`}
-                        className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
-                      >
-                        <BookOpen size={10} />
-                        {ref.book} {ref.chapter}
-                        {ref.verseStart ? `:${ref.verseStart}` : ""}
-                        {ref.verseEnd ? `-${ref.verseEnd}` : ""}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-xs text-muted-foreground">
                   {formatDate(note.createdAt)}
                 </span>
               </div>
+              <h3 className="text-sm font-semibold text-foreground group-hover:text-gold transition-colors leading-snug">
+                {note.title}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1.5 line-clamp-3 leading-relaxed flex-1">
+                {note.content}
+              </p>
+              {(note.themes.length > 0 || note.bibleRefs.length > 0) && (
+                <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border">
+                  {note.themes.slice(0, 2).map((theme) => (
+                    <span
+                      key={theme}
+                      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
+                    >
+                      <Tag size={9} />
+                      {theme}
+                    </span>
+                  ))}
+                  {note.bibleRefs.slice(0, 1).map((ref) => (
+                    <span
+                      key={`${ref.book}-${ref.chapter}`}
+                      className="inline-flex items-center gap-1 rounded-full border border-gold/20 bg-gold/5 px-2 py-0.5 text-xs text-gold"
+                    >
+                      <BookOpen size={9} />
+                      {ref.book} {ref.chapter}
+                      {ref.verseStart ? `:${ref.verseStart}` : ""}
+                    </span>
+                  ))}
+                </div>
+              )}
             </Link>
           ))}
         </div>
