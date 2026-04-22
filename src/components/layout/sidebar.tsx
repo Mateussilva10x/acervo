@@ -55,10 +55,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       {/* Nav */}
       <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto scrollbar-hide">
         {navItems.map(({ href, label, icon: Icon }) => {
-          const active =
-            href === "/app/dashboard"
-              ? pathname === href
-              : pathname.startsWith(href);
+          let active = false;
+          if (href === "/app/dashboard" || href === "/app/notes/new") {
+            active = pathname === href;
+          } else if (href === "/app/notes") {
+            active = pathname.startsWith(href) && !pathname.startsWith("/app/notes/new");
+          } else {
+            active = pathname.startsWith(href);
+          }
+
           return (
             <Link
               key={href}

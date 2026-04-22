@@ -212,14 +212,14 @@ export default function LandingPage() {
         <h2 className=" text-3xl font-semibold text-leather text-center mb-12">
           Planos
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto gap-8 items-start">
           {/* Free */}
-          <div className="rounded-xl border border-border bg-card p-8">
+          <div className="rounded-xl border border-border bg-card p-8 transition-transform hover:scale-[1.02] duration-300">
             <h3 className=" text-xl font-semibold text-foreground mb-1">
               Gratuito
             </h3>
             <p className="text-sm text-muted-foreground mb-6">
-              Para começar a organizar
+              Para começar a organizar seu acervo
             </p>
             <div className="mb-6">
               <span className=" text-4xl font-bold text-foreground">
@@ -228,101 +228,63 @@ export default function LandingPage() {
               <span className="text-muted-foreground text-sm">/mês</span>
             </div>
             <ul className="space-y-3 mb-8">
-              {["Até 50 notas", "Busca simples", "Categorização manual"].map(
+              {["Até 150 notas", "Busca simples por palavra", "Categorização por IA (básica)"].map(
                 (f) => (
                   <li
                     key={f}
-                    className="flex items-center gap-2 text-sm text-foreground"
+                    className="flex items-start gap-3 text-sm text-foreground"
                   >
-                    <Check size={14} className="text-gold shrink-0" />
-                    {f}
+                    <Check size={16} className="text-gold shrink-0 mt-0.5" />
+                    <span className="leading-tight">{f}</span>
                   </li>
                 ),
               )}
             </ul>
             <Link
               href="/register"
-              className="block w-full h-10 flex items-center justify-center rounded-xl border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+              className="block w-full h-11 flex items-center justify-center rounded-xl border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors"
             >
-              Escolher Plano
+              Começar Grátis
             </Link>
           </div>
 
           {/* Pro */}
-          <div className="rounded-xl border-2 border-gold bg-card p-8 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gold text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
-              Popular
+          <div className="rounded-xl border-2 border-gold bg-card p-8 relative shadow-sm transition-transform hover:scale-[1.02] duration-300">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gold text-primary-foreground text-xs font-bold uppercase tracking-wider px-4 py-1.5 rounded-full whitespace-nowrap shadow-sm">
+              Mais Escolhido
             </div>
             <h3 className=" text-xl font-semibold text-foreground mb-1">Pro</h3>
             <p className="text-sm text-muted-foreground mb-6">
-              Para pregadores dedicados
+              O poder completo da IA para seus sermões
             </p>
             <div className="mb-6">
               <span className=" text-4xl font-bold text-foreground">
-                R$&nbsp;39
+                R$&nbsp;29,90
               </span>
               <span className="text-muted-foreground text-sm">/mês</span>
             </div>
             <ul className="space-y-3 mb-8">
               {[
                 "Notas ilimitadas",
-                "Busca por IA",
-                "Transcrição de áudio",
-                "OCR de imagens",
-                "Exportação PDF",
+                "Busca semântica avançada (IA)",
+                "Transcrição inteligente de áudio",
+                "Extração de texto de fotos (OCR)",
+                "Sugestões de esboços",
               ].map((f) => (
                 <li
                   key={f}
-                  className="flex items-center gap-2 text-sm text-foreground"
+                  className="flex items-start gap-3 text-sm text-foreground"
                 >
-                  <Check size={14} className="text-gold shrink-0" />
-                  {f}
+                  <Check size={16} className="text-gold shrink-0 mt-0.5" />
+                  <span className="leading-tight">{f}</span>
                 </li>
               ))}
             </ul>
             <Link
               href="/register"
-              className="block w-full h-10 flex items-center justify-center rounded-xl bg-gold text-primary-foreground text-sm font-medium hover:bg-gold-dark transition-colors"
+              className="block w-full h-11 flex items-center justify-center rounded-xl bg-gold text-primary-foreground text-sm font-medium hover:bg-gold-dark transition-colors"
             >
-              Escolher Plano
-            </Link>
-          </div>
-
-          {/* Igreja */}
-          <div className="rounded-xl border border-border bg-card p-8">
-            <h3 className=" text-xl font-semibold text-foreground mb-1">
-              Igreja
-            </h3>
-            <p className="text-sm text-muted-foreground mb-6">
-              Para equipes pastorais
-            </p>
-            <div className="mb-6">
-              <span className=" text-4xl font-bold text-foreground">
-                R$&nbsp;99
-              </span>
-              <span className="text-muted-foreground text-sm">/mês</span>
-            </div>
-            <ul className="space-y-3 mb-8">
-              {[
-                "Tudo do Pro",
-                "Biblioteca compartilhada",
-                "Múltiplos usuários",
-                "Suporte prioritário",
-              ].map((f) => (
-                <li
-                  key={f}
-                  className="flex items-center gap-2 text-sm text-foreground"
-                >
-                  <Check size={14} className="text-gold shrink-0" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/register"
-              className="block w-full h-10 flex items-center justify-center rounded-xl border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors"
-            >
-              Escolher Plano
+              Assinar Plano Pro
             </Link>
           </div>
         </div>
