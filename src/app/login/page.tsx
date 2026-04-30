@@ -21,10 +21,9 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      // Autentica → recebe JWT → vai direto ao dashboard
-      const token = await authApi.login({ email, password });
+      const { token, isFirstLogin } = await authApi.login({ email, password });
       setAuth(token, null); // user será carregado sob demanda (ex: Settings)
-      router.push("/app/dashboard");
+      router.push(isFirstLogin ? "/change-password" : "/app/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 401 || err.status === 403) {

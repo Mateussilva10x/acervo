@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, Check, Plus } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
-import { THEMES } from "@/lib/mock-data";
 import type { Note } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +16,12 @@ export default function EditNotePage({
   const { id } = use(params);
   const router = useRouter();
   const { notes, updateNote } = useAppStore();
+  const storeThemes = useAppStore((s) => s.themes);
   const note = notes.find((n) => n.id === id);
+  // Nomes únicos para exibição (backend + já usados na nota)
+  const allThemeNames = storeThemes.length > 0
+    ? storeThemes.map((t) => t.name)
+    : [...new Set([...(note?.themes ?? [])])];
 
   const [title, setTitle] = useState(note?.title ?? "");
   const [content, setContent] = useState(note?.content ?? "");
@@ -155,7 +159,7 @@ export default function EditNotePage({
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Temas</label>
             <div className="flex flex-wrap gap-2">
-              {THEMES.map((theme) => (
+              {allThemeNames.map((theme) => (
                 <button
                   key={theme}
                   type="button"

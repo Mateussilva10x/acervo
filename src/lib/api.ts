@@ -1,18 +1,16 @@
 /**
  * API client — todas as chamadas passam pelo proxy Next.js (/api/proxy/*)
  * que repassa server-to-server para o backend, evitando CORS.
- *
- * Para trocar o backend, altere API_URL no .env.local (server-side).
- * O cliente nunca fala diretamente com localhost:8080.
  */
 
-// Proxy local (mesmo origin que o Next.js, sem CORS)
+import type { BibleRef, Note } from "@/lib/mock-data";
+
 const BASE_URL = "/api/proxy";
 
-// ─── DTOs (espelham o Swagger) ────────────────────────────────────
+// ─── DTOs (espelham exatamente o Swagger) ────────────────────────
 
 export interface UserResponseDTO {
-  id: string;
+  id: string;       // UUID
   name: string;
   email: string;
   birthDate: string; // "YYYY-MM-DD"
@@ -23,12 +21,95 @@ export interface UserRequestDTO {
   email: string;
   birthDate: string; // "YYYY-MM-DD"
   password: string;
-  cpf: string; // exatamente 11 dígitos numéricos
+  cpf: string;       // exatamente 11 dígitos numéricos
 }
 
 export interface LoginRequestDTO {
   email: string;
   password: string;
+}
+
+export interface LoginResponseDTO {
+  token: string;
+  isFirstLogin: boolean;
+}
+
+export interface ChangePasswordRequestDTO {
+  newPassword: string;
+}
+
+export interface ThemeResponseDTO {
+  id: string;   // UUID
+  name: string;
+}
+
+export interface ThemeRequestDTO {
+  name: string;
+}
+
+export interface NoteResponseDTO {
+  id: string;               // UUID
+  title: string;
+  content: string;
+  audioUrl?: string | null;
+  imageUrl?: string | null;
+  biblicalReferences: string[]; // ex: ["João 3:16", "Romanos 6:1-14"]
+  themes: ThemeResponseDTO[];
+}
+
+export interface NoteRequestDTO {
+  title: string;
+  content: string;
+  audioUrl?: string | null;
+  imageUrl?: string | null;
+  biblicalReferences: string[]; // obrigatório (pode ser array vazio)
+  themeIds?: string[];          // UUIDs dos temas
+}
+
+// ─── Helpers de mapeamento ────────────────────────────────────────
+
+/**
+ * Converte BibleRef → string para o backend.
+ * Ex: { book: "João", chapter: 3, verseStart: 16 } → "João 3:16"
+ */
+export function bibleRefToString(ref: BibleRef): string {
+  let s = `${ref.book} ${ref.chapter}`;
+  if (ref.verseStart) {
+    s += `:${ref.verseStart}`;
+    if (ref.verseEnd) s += `-${ref.verseEnd}`;
+  }
+  return s;
+}
+
+/**
+ * Converte string do backend → BibleRef.
+ * Ex: "João 3:16" → { book: "João", chapter: 3, verseStart: 16 }
+ */
+export function stringToBibleRef(ref: string): BibleRef {
+  const match = ref.match(/^(.+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
+  if (!match) return { book: ref, chapter: 1 };
+  return {
+    book: match[1],
+    chapter: parseInt(match[2]),
+    verseStart: match[3] ? parseInt(match[3]) : undefined,
+    verseEnd:   match[4] ? parseInt(match[4]) : undefined,
+  };
+}
+
+/**
+ * Mapeia NoteResponseDTO (backend) → Note (frontend).
+ * Campos ausentes no backend (location, createdAt, updatedAt) ficam como defaults.
+ */
+export function parseNoteResponse(dto: NoteResponseDTO): Note {
+  return {
+    id:        dto.id,
+    title:     dto.title,
+    content:   dto.content,
+    themes:    dto.themes.map((t) => t.name),
+    bibleRefs: (dto.biblicalReferences ?? []).map(stringToBibleRef),
+    createdAt: new Date().toISOString().split("T")[0],
+    updatedAt: new Date().toISOString().split("T")[0],
+  };
 }
 
 // ─── Erro tipado ──────────────────────────────────────────────────
@@ -70,7 +151,7 @@ async function request<T>(
       const body = await res.json();
       message = body.message ?? body.error ?? message;
     } catch {
-      // resposta sem corpo JSON
+      /* resposta sem corpo JSON */
     }
     throw new ApiError(res.status, message);
   }
@@ -79,6 +160,7 @@ async function request<T>(
   if (ct.includes("application/json")) {
     return res.json() as Promise<T>;
   }
+  // Resposta texto puro (ex: login retornando JWT como string)
   return res.text() as unknown as T;
 }
 
@@ -86,55 +168,100 @@ async function request<T>(
 
 export const authApi = {
   /**
-   * POST /api/v1/auth/login → retorna { token: string }
-   * Extrai apenas a string JWT do objeto de resposta.
+   * POST /api/v1/auth/login
+   * Retorna token + isFirstLogin. Suporta resposta como string pura (JWT) ou objeto.
    */
-  login: async (data: LoginRequestDTO): Promise<string> => {
-    const res = await request<{ token: string }>("/api/v1/auth/login", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-    return res.token;
+  login: async (data: LoginRequestDTO): Promise<LoginResponseDTO> => {
+    const raw = await request<string | { token: string; isFirstLogin?: boolean }>(
+      "/api/v1/auth/login",
+      { method: "POST", body: JSON.stringify(data) },
+    );
+    if (typeof raw === "string") {
+      return { token: raw, isFirstLogin: false };
+    }
+    return {
+      token: raw.token,
+      isFirstLogin: raw.isFirstLogin ?? false,
+    };
   },
 
-  /**
-   * GET /api/v1/auth/me → dados do usuário logado (requer Bearer token)
-   */
+  /** GET /api/v1/auth/me → dados do usuário logado */
   me: (token: string): Promise<UserResponseDTO> =>
     request<UserResponseDTO>("/api/v1/auth/me", {}, token),
+
+  /** PUT /api/v1/auth/change-password → troca de senha no primeiro login */
+  changePassword: (data: ChangePasswordRequestDTO, token: string): Promise<void> =>
+    request<void>("/api/v1/auth/change-password", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }, token),
 };
 
 // ─── Usuários ─────────────────────────────────────────────────────
 
 export const usersApi = {
-  /** POST /api/v1/users — cria novo usuário */
   create: (data: UserRequestDTO): Promise<UserResponseDTO> =>
     request<UserResponseDTO>("/api/v1/users", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  /** GET /api/v1/users/{id} */
   getById: (id: string, token: string): Promise<UserResponseDTO> =>
     request<UserResponseDTO>(`/api/v1/users/${id}`, {}, token),
 
-  /** PUT /api/v1/users/{id} */
-  update: (
-    id: string,
-    data: UserRequestDTO,
-    token: string,
-  ): Promise<UserResponseDTO> =>
+  update: (id: string, data: UserRequestDTO, token: string): Promise<UserResponseDTO> =>
     request<UserResponseDTO>(
       `/api/v1/users/${id}`,
       { method: "PUT", body: JSON.stringify(data) },
       token,
     ),
 
-  /** DELETE /api/v1/users/{id} */
   delete: (id: string, token: string): Promise<void> =>
     request<void>(`/api/v1/users/${id}`, { method: "DELETE" }, token),
 
-  /** GET /api/v1/users */
   getAll: (token: string): Promise<UserResponseDTO[]> =>
     request<UserResponseDTO[]>("/api/v1/users", {}, token),
+};
+
+// ─── Temas ────────────────────────────────────────────────────────
+
+export const themesApi = {
+  /** GET /api/v1/themes → lista todos os temas */
+  getAll: (token: string): Promise<ThemeResponseDTO[]> =>
+    request<ThemeResponseDTO[]>("/api/v1/themes", {}, token),
+
+  /** POST /api/v1/themes → cria um novo tema */
+  create: (data: ThemeRequestDTO, token: string): Promise<ThemeResponseDTO> =>
+    request<ThemeResponseDTO>("/api/v1/themes", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token),
+};
+
+// ─── Notas ────────────────────────────────────────────────────────
+
+export const notesApi = {
+  /**
+   * GET /api/v1/notes → lista todas as notas
+   * Mapeia automaticamente para o tipo Note do frontend.
+   */
+  getAll: async (token: string): Promise<Note[]> => {
+    const dtos = await request<NoteResponseDTO[]>("/api/v1/notes", {}, token);
+    return dtos.map(parseNoteResponse);
+  },
+
+  /**
+   * POST /api/v1/notes → cria uma nova nota
+   * Retorna a nota criada já mapeada para o tipo Note.
+   */
+  create: async (data: NoteRequestDTO, token: string): Promise<Note> => {
+    const dto = await request<NoteResponseDTO>("/api/v1/notes", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token);
+    return parseNoteResponse(dto);
+  },
+
+  // GET/PUT/DELETE /api/v1/notes/{id} não existem no backend ainda.
+  // O detalhe, edição e exclusão são tratados localmente no store Zustand.
 };

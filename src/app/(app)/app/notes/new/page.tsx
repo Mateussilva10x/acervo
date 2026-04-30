@@ -11,62 +11,104 @@ import {
   Check,
   Upload,
   Loader2,
-  Sparkles,
   AlertCircle,
   File,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
-import { THEMES, type Note } from "@/lib/mock-data";
+import {
+  notesApi,
+  themesApi,
+  bibleRefToString,
+  type ThemeResponseDTO,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Tab = "text" | "pdf";
 
-interface AiNoteResult {
+interface PdfImportResult {
   title?: string;
   content?: string;
-  themes?: string[];
-  bibleBook?: string | null;
-  bibleChapter?: number | null;
-  bibleVerseStart?: number | null;
-  bibleVerseEnd?: number | null;
-  location?: string | null;
 }
 
 export default function NewNotePage() {
-  const router = useRouter();
-  const addNote = useAppStore((s) => s.addNote);
+  const router   = useRouter();
+  const token    = useAppStore((s) => s.token);
+  const addNote  = useAppStore((s) => s.addNote);
+  const storeThemes  = useAppStore((s) => s.themes);
+  const setStoreThemes = useAppStore((s) => s.setThemes);
 
   const [tab, setTab] = useState<Tab>("text");
 
   // ── Form fields ───────────────────────────────────────────────
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [location, setLocation] = useState("");
-  const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
-  const [newTheme, setNewTheme] = useState("");
-  const [bibleBook, setBibleBook] = useState("");
-  const [bibleChapter, setBibleChapter] = useState("");
-  const [bibleVerseStart, setBibleVerseStart] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [title,          setTitle]          = useState("");
+  const [content,        setContent]        = useState("");
+  const [location,       setLocation]       = useState("");
+  const [bibleBook,      setBibleBook]      = useState("");
+  const [bibleChapter,   setBibleChapter]   = useState("");
+  const [bibleVerseStart,setBibleVerseStart]= useState("");
+  const [bibleVerseEnd,  setBibleVerseEnd]  = useState("");
+  const [saving,         setSaving]         = useState(false);
+  const [saved,          setSaved]          = useState(false);
+  const [saveError,      setSaveError]      = useState("");
+
+  // ── Seleção de temas ──────────────────────────────────────────
+  // Trabalhamos com os objetos completos { id, name } do backend
+  const [selectedThemes, setSelectedThemes] = useState<ThemeResponseDTO[]>([]);
+  const [newThemeName,   setNewThemeName]   = useState("");
+  const [creatingTheme,  setCreatingTheme]  = useState(false);
 
   // ── PDF states ────────────────────────────────────────────────
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfFile,       setPdfFile]       = useState<File | null>(null);
   const [pdfProcessing, setPdfProcessing] = useState(false);
-  const [pdfError, setPdfError] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
+  const [pdfError,      setPdfError]      = useState("");
+  const [isDragging,    setIsDragging]    = useState(false);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
-  // ── AI result helper ──────────────────────────────────────────
-  function applyAiResult(result: AiNoteResult) {
-    if (result.title) setTitle(result.title);
+  // ── PDF import helper ─────────────────────────────────────────
+  function applyPdfResult(result: PdfImportResult) {
+    if (result.title)   setTitle(result.title);
     if (result.content) setContent(result.content);
-    if (result.themes?.length) setSelectedThemes(result.themes);
-    if (result.bibleBook) setBibleBook(result.bibleBook);
-    if (result.bibleChapter) setBibleChapter(String(result.bibleChapter));
-    if (result.bibleVerseStart) setBibleVerseStart(String(result.bibleVerseStart));
-    if (result.location) setLocation(result.location);
     setTab("text");
+  }
+
+  // ── Handlers de tema ──────────────────────────────────────────
+  function toggleTheme(theme: ThemeResponseDTO) {
+    setSelectedThemes((prev) =>
+      prev.some((t) => t.id === theme.id)
+        ? prev.filter((t) => t.id !== theme.id)
+        : [...prev, theme],
+    );
+  }
+
+  async function handleAddTheme() {
+    const name = newThemeName.trim();
+    if (!name || !token) return;
+
+    // Já existe no backend?
+    const existing = storeThemes.find(
+      (t) => t.name.toLowerCase() === name.toLowerCase(),
+    );
+    if (existing) {
+      if (!selectedThemes.some((t) => t.id === existing.id)) {
+        setSelectedThemes((prev) => [...prev, existing]);
+      }
+      setNewThemeName("");
+      return;
+    }
+
+    // Cria no backend
+    setCreatingTheme(true);
+    try {
+      const created = await themesApi.create({ name }, token);
+      const updated = [...storeThemes, created];
+      setStoreThemes(updated);
+      setSelectedThemes((prev) => [...prev, created]);
+      setNewThemeName("");
+    } catch {
+      // Silencia — usuário pode tentar novamente
+    } finally {
+      setCreatingTheme(false);
+    }
   }
 
   // ── PDF handlers ──────────────────────────────────────────────
@@ -114,71 +156,62 @@ export default function NewNotePage() {
     try {
       const form = new FormData();
       form.append("pdf", pdfFile);
-      const res = await fetch("/api/ai/transcribe-pdf", {
-        method: "POST",
-        body: form,
-      });
+      const res  = await fetch("/api/ai/transcribe-pdf", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
-      applyAiResult(data);
+      applyPdfResult(data);
     } catch (err) {
-      setPdfError(
-        err instanceof Error ? err.message : "Falha ao processar PDF.",
-      );
+      setPdfError(err instanceof Error ? err.message : "Falha ao importar PDF.");
     } finally {
       setPdfProcessing(false);
     }
   }
 
-  // ── Form handlers ─────────────────────────────────────────────
-  function toggleTheme(theme: string) {
-    setSelectedThemes((p) =>
-      p.includes(theme) ? p.filter((t) => t !== theme) : [...p, theme],
-    );
-  }
+  // ── Submit ────────────────────────────────────────────────────
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim() || !token) return;
+    setSaving(true);
+    setSaveError("");
 
-  function handleAddTheme() {
-    const t = newTheme.trim();
-    if (t && !selectedThemes.includes(t)) {
-      setSelectedThemes((p) => [...p, t]);
-      setNewTheme("");
+    // Monta referências bíblicas como string[] para o backend
+    const biblicalReferences: string[] = [];
+    if (bibleBook.trim()) {
+      const ref = {
+        book: bibleBook.trim(),
+        chapter: parseInt(bibleChapter) || 1,
+        verseStart: bibleVerseStart ? parseInt(bibleVerseStart) : undefined,
+        verseEnd:   bibleVerseEnd   ? parseInt(bibleVerseEnd)   : undefined,
+      };
+      biblicalReferences.push(bibleRefToString(ref));
+    }
+
+    try {
+      const created = await notesApi.create(
+        {
+          title:   title.trim(),
+          content: content.trim(),
+          biblicalReferences,
+          themeIds: selectedThemes.map((t) => t.id),
+        },
+        token,
+      );
+      // Adiciona ao store com os campos de localização (não existem no backend)
+      addNote({ ...created, location: location.trim() || undefined });
+      setSaved(true);
+      setTimeout(() => router.push("/app/notes"), 800);
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Falha ao salvar nota.",
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!title.trim()) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 400));
-
-    const note: Note = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      content: content.trim(),
-      themes: selectedThemes,
-      location: location.trim() || undefined,
-      bibleRefs: bibleBook
-        ? [
-            {
-              book: bibleBook,
-              chapter: parseInt(bibleChapter) || 1,
-              verseStart: bibleVerseStart ? parseInt(bibleVerseStart) : undefined,
-            },
-          ]
-        : [],
-      createdAt: new Date().toISOString().split("T")[0],
-      updatedAt: new Date().toISOString().split("T")[0],
-    };
-
-    addNote(note);
-    setSaved(true);
-    setSaving(false);
-    setTimeout(() => router.push("/app/notes"), 800);
-  }
-
-  const tabs: { id: Tab; label: string; icon: typeof FileText }[] = [
-    { id: "text", label: "Escrever Texto", icon: FileText },
-    { id: "pdf", label: "Importar PDF", icon: FileUp },
+  const tabs = [
+    { id: "text" as Tab, label: "Escrever Texto", icon: FileText },
+    { id: "pdf"  as Tab, label: "Importar PDF",   icon: FileUp   },
   ];
 
   // ─────────────────────────────────────────────────────────────
@@ -209,10 +242,9 @@ export default function NewNotePage() {
       {tab === "text" && (
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="rounded-xl border border-border bg-card p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-foreground">
-              Escrever Texto
-            </h2>
+            <h2 className="text-lg font-semibold text-foreground">Escrever Texto</h2>
 
+            {/* Título */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Título</label>
               <input
@@ -225,6 +257,7 @@ export default function NewNotePage() {
               />
             </div>
 
+            {/* Conteúdo */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Conteúdo</label>
               <textarea
@@ -236,6 +269,7 @@ export default function NewNotePage() {
               />
             </div>
 
+            {/* Local */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Local</label>
               <input
@@ -247,49 +281,65 @@ export default function NewNotePage() {
               />
             </div>
 
-            {/* Themes */}
+            {/* Temas */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Temas</label>
-              <div className="flex flex-wrap gap-2">
-                {THEMES.map((theme) => (
-                  <button
-                    key={theme}
-                    type="button"
-                    onClick={() => toggleTheme(theme)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors border",
-                      selectedThemes.includes(theme)
-                        ? "bg-gold/20 border-gold/40 text-gold"
-                        : "border-border text-muted-foreground hover:border-gold/40 hover:text-gold",
-                    )}
-                  >
-                    {selectedThemes.includes(theme) && <Check size={10} />}
-                    {theme}
-                  </button>
-                ))}
-              </div>
+
+              {storeThemes.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {storeThemes.map((theme) => {
+                    const active = selectedThemes.some((t) => t.id === theme.id);
+                    return (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        onClick={() => toggleTheme(theme)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors border",
+                          active
+                            ? "bg-gold/20 border-gold/40 text-gold"
+                            : "border-border text-muted-foreground hover:border-gold/40 hover:text-gold",
+                        )}
+                      >
+                        {active && <Check size={10} />}
+                        {theme.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Nenhum tema cadastrado. Crie o primeiro abaixo.
+                </p>
+              )}
+
+              {/* Novo tema */}
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={newTheme}
-                  onChange={(e) => setNewTheme(e.target.value)}
+                  value={newThemeName}
+                  onChange={(e) => setNewThemeName(e.target.value)}
                   onKeyDown={(e) =>
                     e.key === "Enter" && (e.preventDefault(), handleAddTheme())
                   }
-                  placeholder="Adicionar Tema"
+                  placeholder="Novo tema..."
                   className="flex-1 rounded-xl border border-input bg-transparent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
                 />
                 <button
                   type="button"
                   onClick={handleAddTheme}
-                  className="h-9 w-9 flex items-center justify-center rounded-xl border border-border hover:bg-secondary transition-colors"
+                  disabled={creatingTheme || !newThemeName.trim()}
+                  className="h-9 w-9 flex items-center justify-center rounded-xl border border-border hover:bg-secondary transition-colors disabled:opacity-50"
                 >
-                  <Plus size={14} className="text-foreground" />
+                  {creatingTheme
+                    ? <Loader2 size={14} className="animate-spin text-foreground" />
+                    : <Plus size={14} className="text-foreground" />
+                  }
                 </button>
               </div>
             </div>
 
-            {/* Bible Refs */}
+            {/* Referências Bíblicas */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
                 <BookOpen size={14} className="text-muted-foreground" />
@@ -318,8 +368,23 @@ export default function NewNotePage() {
                   className="rounded-xl border border-input bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
                 />
               </div>
+              <input
+                type="text"
+                value={bibleVerseEnd}
+                onChange={(e) => setBibleVerseEnd(e.target.value)}
+                placeholder="Verso final (opcional)"
+                className="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+              />
             </div>
           </div>
+
+          {/* Erro de save */}
+          {saveError && (
+            <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-xl px-4 py-2.5">
+              <AlertCircle size={14} className="shrink-0" />
+              {saveError}
+            </div>
+          )}
 
           <div className="flex gap-3">
             <button
@@ -355,13 +420,10 @@ export default function NewNotePage() {
             onDrop={handleDrop}
             className={cn(
               "rounded-xl border-2 border-dashed transition-colors",
-              isDragging
-                ? "border-gold bg-gold/5"
-                : "border-border bg-card",
+              isDragging ? "border-gold bg-gold/5" : "border-border bg-card",
             )}
           >
             {!pdfFile ? (
-              /* Empty state */
               <div className="flex flex-col items-center justify-center gap-5 p-12 text-center">
                 <div className={cn(
                   "w-16 h-16 rounded-full flex items-center justify-center transition-colors",
@@ -374,7 +436,7 @@ export default function NewNotePage() {
                     Arraste seu PDF aqui ou clique para selecionar
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Livros, artigos, esboços e manuscritos — a IA organiza tudo como nota
+                    Livros, artigos, esboços e manuscritos — o texto é extraído para você organizar
                   </p>
                   <p className="text-xs text-muted-foreground">Limite: 32 MB</p>
                 </div>
@@ -395,20 +457,15 @@ export default function NewNotePage() {
                 />
               </div>
             ) : (
-              /* File selected */
               <div className="p-6 space-y-5">
-                {/* File info card */}
+                {/* File info */}
                 <div className="flex items-center gap-4 rounded-xl bg-secondary/40 border border-border px-4 py-3">
                   <div className="w-10 h-10 rounded-lg bg-gold/10 text-gold flex items-center justify-center shrink-0 border border-gold/20">
                     <File size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {pdfFile.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatFileSize(pdfFile.size)}
-                    </p>
+                    <p className="text-sm font-medium text-foreground truncate">{pdfFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize(pdfFile.size)}</p>
                   </div>
                   <button
                     onClick={clearPdf}
@@ -419,16 +476,14 @@ export default function NewNotePage() {
                   </button>
                 </div>
 
-                {/* Description */}
-                <div className="rounded-xl bg-gold/5 border border-gold/20 px-4 py-3 flex items-start gap-3">
-                  <Sparkles size={16} className="text-gold shrink-0 mt-0.5" />
+                <div className="rounded-xl bg-secondary/40 border border-border px-4 py-3 flex items-start gap-3">
+                  <FileText size={16} className="text-muted-foreground shrink-0 mt-0.5" />
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    A IA irá ler o PDF, identificar o tema principal, referências bíblicas e
-                    organizar o conteúdo como uma nota estruturada para você revisar e salvar.
+                    O texto do PDF será extraído e copiado para a nota. Você poderá ajustar
+                    título, temas e referências bíblicas antes de salvar.
                   </p>
                 </div>
 
-                {/* Error */}
                 {pdfError && (
                   <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-xl px-4 py-2.5">
                     <AlertCircle size={14} className="shrink-0" />
@@ -436,7 +491,6 @@ export default function NewNotePage() {
                   </div>
                 )}
 
-                {/* Actions */}
                 <div className="flex flex-col gap-3">
                   <button
                     onClick={handleTranscribePdf}
@@ -444,9 +498,9 @@ export default function NewNotePage() {
                     className="w-full h-11 rounded-xl bg-gold text-primary-foreground text-sm font-medium hover:bg-gold-dark transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {pdfProcessing ? (
-                      <><Loader2 size={16} className="animate-spin" /> Analisando PDF...</>
+                      <><Loader2 size={16} className="animate-spin" /> Extraindo texto...</>
                     ) : (
-                      <><Sparkles size={16} /> Estruturar com IA</>
+                      <><FileUp size={16} /> Importar conteúdo</>
                     )}
                   </button>
                   <button

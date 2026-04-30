@@ -2,17 +2,31 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, Tag, BookOpen, Plus, SlidersHorizontal } from "lucide-react";
+import { Search, Tag, BookOpen, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
-import { THEMES } from "@/lib/mock-data";
 import { formatDate } from "@/lib/utils";
 import { readerUrl } from "@/lib/bible-books";
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
+import type { Note } from "@/lib/mock-data";
 
 export default function NotesPage() {
-  const { notes } = useAppStore();
-  const [search, setSearch] = useState("");
-  const [filterTheme, setFilterTheme] = useState("");
-  const [sortBy, setSortBy] = useState<"recent" | "oldest">("recent");
+  const notes      = useAppStore((s) => s.notes);
+  const themes     = useAppStore((s) => s.themes);
+  const deleteNote = useAppStore((s) => s.deleteNote);
+
+  const [search,        setSearch]        = useState("");
+  const [filterTheme,   setFilterTheme]   = useState("");
+  const [sortBy,        setSortBy]        = useState<"recent" | "oldest">("recent");
+  const [deleteTarget,  setDeleteTarget]  = useState<Note | null>(null);
+
+  // Nomes únicos dos temas presentes nas notas (para o filtro)
+  const themeNames = useMemo(() => {
+    if (themes.length > 0) return themes.map((t) => t.name);
+    // Fallback: extrai dos próprios dados das notas
+    const names = new Set<string>();
+    notes.forEach((n) => n.themes.forEach((t) => names.add(t)));
+    return [...names].sort();
+  }, [themes, notes]);
 
   const filtered = useMemo(() => {
     let list = [...notes];
@@ -36,11 +50,33 @@ export default function NotesPage() {
     return list;
   }, [notes, search, filterTheme, sortBy]);
 
+  function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    deleteNote(deleteTarget.id);
+    setDeleteTarget(null);
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          title="Deletar nota?"
+          description={
+            <>
+              A nota{" "}
+              <span className="font-medium text-foreground">
+                &ldquo;{deleteTarget.title}&rdquo;
+              </span>{" "}
+              será removida permanentemente. Esta ação não pode ser desfeita.
+            </>
+          }
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className=" text-2xl sm:text-3xl font-bold text-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
           Todas as notas
         </h1>
         <Link
@@ -54,7 +90,6 @@ export default function NotesPage() {
 
       {/* Filters bar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        {/* Search */}
         <div className="relative flex-1">
           <Search
             size={15}
@@ -69,7 +104,6 @@ export default function NotesPage() {
           />
         </div>
 
-        {/* Theme filter + Sort (same row on mobile) */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
             <SlidersHorizontal
@@ -82,7 +116,7 @@ export default function NotesPage() {
               className="flex-1 sm:flex-none h-9 rounded-xl border border-input bg-transparent px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Todas</option>
-              {THEMES.map((t) => (
+              {themeNames.map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
@@ -112,7 +146,9 @@ export default function NotesPage() {
           <div className="col-span-full rounded-xl border border-dashed border-border p-12 text-center">
             <Search size={32} className="text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground text-sm">
-              Nenhuma nota encontrada
+              {notes.length === 0
+                ? "Nenhuma nota ainda. Crie a sua primeira!"
+                : "Nenhuma nota encontrada"}
             </p>
           </div>
         ) : (
@@ -126,11 +162,20 @@ export default function NotesPage() {
                 <span className="text-xs text-muted-foreground">
                   {formatDate(note.createdAt)}
                 </span>
-                {note.location && (
-                  <span className="text-xs text-muted-foreground/60 truncate">
-                    📍 {note.location}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {note.location && (
+                    <span className="text-xs text-muted-foreground/60 truncate">
+                      📍 {note.location}
+                    </span>
+                  )}
+                  <button
+                    onClick={(e) => { e.preventDefault(); setDeleteTarget(note); }}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                    title="Excluir nota"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
 
               {/* Title + content */}

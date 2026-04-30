@@ -54,8 +54,8 @@ export default function RegisterPage() {
         cpf: cpfDigits,
       });
 
-      // 2. Faz login automático e vai ao dashboard
-      const token = await authApi.login({ email, password });
+      // 2. Faz login automático e vai ao dashboard (registro nunca é primeiro login)
+      const { token } = await authApi.login({ email, password });
       setAuth(token, null); // user será carregado sob demanda (Settings)
       router.push("/app/dashboard");
     } catch (err) {

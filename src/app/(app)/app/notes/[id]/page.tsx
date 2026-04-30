@@ -11,75 +11,12 @@ import {
   Calendar,
   Trash2,
   Pencil,
-  AlertTriangle,
-  X,
   FileText,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { formatDate } from "@/lib/utils";
 import { readerUrl } from "@/lib/bible-books";
-
-function DeleteModal({
-  noteTitle,
-  onConfirm,
-  onCancel,
-}: {
-  noteTitle: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onCancel}
-      />
-      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
-        <button
-          onClick={onCancel}
-          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <X size={16} />
-        </button>
-
-        <div className="flex flex-col items-center text-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
-            <AlertTriangle size={22} className="text-destructive" />
-          </div>
-
-          <div>
-            <h2 className="text-lg font-semibold text-foreground mb-1">
-              Deletar nota?
-            </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              A nota{" "}
-              <span className="font-medium text-foreground">
-                &ldquo;{noteTitle}&rdquo;
-              </span>{" "}
-              será removida permanentemente. Esta ação não pode ser desfeita.
-            </p>
-          </div>
-
-          <div className="flex gap-3 w-full pt-1">
-            <button
-              onClick={onCancel}
-              className="flex-1 h-10 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={onConfirm}
-              className="flex-1 h-10 rounded-xl bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-            >
-              <Trash2 size={14} />
-              Deletar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
 
 export default function NoteDetailPage({
   params,
@@ -115,8 +52,17 @@ export default function NoteDetailPage({
   return (
     <>
       {showDeleteModal && (
-        <DeleteModal
-          noteTitle={note.title}
+        <ConfirmDeleteModal
+          title="Deletar nota?"
+          description={
+            <>
+              A nota{" "}
+              <span className="font-medium text-foreground">
+                &ldquo;{note.title}&rdquo;
+              </span>{" "}
+              será removida permanentemente. Esta ação não pode ser desfeita.
+            </>
+          }
           onConfirm={handleConfirmDelete}
           onCancel={() => setShowDeleteModal(false)}
         />

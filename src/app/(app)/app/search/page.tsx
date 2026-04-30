@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Search, Tag, BookOpen, Sparkles } from "lucide-react";
-import { searchNotes } from "@/lib/mock-data";
+import { useAppStore } from "@/store/app-store";
 import { formatDate } from "@/lib/utils";
 import type { Note } from "@/lib/mock-data";
 
@@ -17,18 +17,29 @@ const SUGGESTIONS = [
 ];
 
 export default function SearchPage() {
-  const [query, setQuery] = useState("");
+  const notes    = useAppStore((s) => s.notes);
+  const [query,   setQuery]   = useState("");
   const [results, setResults] = useState<Note[]>([]);
   const [searched, setSearched] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]   = useState(false);
 
   async function handleSearch(q: string) {
     if (!q.trim()) return;
     setQuery(q);
     setLoading(true);
     setSearched(false);
-    await new Promise((r) => setTimeout(r, 500));
-    setResults(searchNotes(q));
+    // Busca client-side no store (sem endpoint de busca no backend ainda)
+    await new Promise((r) => setTimeout(r, 300));
+    const lower = q.toLowerCase();
+    setResults(
+      notes.filter(
+        (n) =>
+          n.title.toLowerCase().includes(lower) ||
+          n.content.toLowerCase().includes(lower) ||
+          n.themes.some((t) => t.toLowerCase().includes(lower)) ||
+          n.bibleRefs.some((r) => r.book.toLowerCase().includes(lower)),
+      ),
+    );
     setSearched(true);
     setLoading(false);
   }
