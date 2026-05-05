@@ -196,6 +196,20 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify(data),
     }, token),
+
+  /** POST /api/v1/auth/forgot-password → envia email com link de redefinição */
+  forgotPassword: (email: string): Promise<void> =>
+    request<void>("/api/v1/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  /** POST /api/v1/auth/reset-password?token=TOKEN → redefine senha com token do email */
+  resetPassword: (token: string, newPassword: string): Promise<void> =>
+    request<void>(`/api/v1/auth/reset-password?token=${encodeURIComponent(token)}`, {
+      method: "POST",
+      body: JSON.stringify({ newPassword }),
+    }),
 };
 
 // ─── Usuários ─────────────────────────────────────────────────────
