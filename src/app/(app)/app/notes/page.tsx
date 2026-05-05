@@ -7,17 +7,20 @@ import { useAppStore } from "@/store/app-store";
 import { formatDate } from "@/lib/utils";
 import { readerUrl } from "@/lib/bible-books";
 import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
+import { notesApi } from "@/lib/api";
 import type { Note } from "@/lib/mock-data";
 
 export default function NotesPage() {
   const notes      = useAppStore((s) => s.notes);
   const themes     = useAppStore((s) => s.themes);
+  const token      = useAppStore((s) => s.token);
   const deleteNote = useAppStore((s) => s.deleteNote);
 
   const [search,        setSearch]        = useState("");
   const [filterTheme,   setFilterTheme]   = useState("");
   const [sortBy,        setSortBy]        = useState<"recent" | "oldest">("recent");
   const [deleteTarget,  setDeleteTarget]  = useState<Note | null>(null);
+  const [deleting,      setDeleting]      = useState(false);
 
   // Nomes únicos dos temas presentes nas notas (para o filtro)
   const themeNames = useMemo(() => {
@@ -50,10 +53,18 @@ export default function NotesPage() {
     return list;
   }, [notes, search, filterTheme, sortBy]);
 
-  function handleConfirmDelete() {
-    if (!deleteTarget) return;
-    deleteNote(deleteTarget.id);
-    setDeleteTarget(null);
+  async function handleConfirmDelete() {
+    if (!deleteTarget || !token) return;
+    setDeleting(true);
+    try {
+      await notesApi.delete(deleteTarget.id, token);
+    } catch {
+      // Se o backend falhar, ainda remove localmente
+    } finally {
+      deleteNote(deleteTarget.id);
+      setDeleteTarget(null);
+      setDeleting(false);
+    }
   }
 
   return (
@@ -70,6 +81,7 @@ export default function NotesPage() {
               será removida permanentemente. Esta ação não pode ser desfeita.
             </>
           }
+          loading={deleting}
           onConfirm={handleConfirmDelete}
           onCancel={() => setDeleteTarget(null)}
         />

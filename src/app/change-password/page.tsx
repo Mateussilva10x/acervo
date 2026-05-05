@@ -28,7 +28,7 @@ export default function ChangePasswordPage() {
     setError("");
     setLoading(true);
     try {
-      await authApi.changePassword({ newPassword }, token);
+      await authApi.firstAccessPassword({ password: newPassword }, token);
       router.push("/app/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {

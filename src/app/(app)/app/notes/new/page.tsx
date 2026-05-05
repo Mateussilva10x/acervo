@@ -19,8 +19,10 @@ import {
   notesApi,
   themesApi,
   bibleRefToString,
+  parseNoteResponse,
   type ThemeResponseDTO,
 } from "@/lib/api";
+import { PlanLimitModal } from "@/components/ui/plan-limit-modal";
 import { cn } from "@/lib/utils";
 
 type Tab = "text" | "pdf";
@@ -50,6 +52,7 @@ export default function NewNotePage() {
   const [saving,         setSaving]         = useState(false);
   const [saved,          setSaved]          = useState(false);
   const [saveError,      setSaveError]      = useState("");
+  const [planMessage,    setPlanMessage]    = useState<string | null>(null);
 
   // ── Seleção de temas ──────────────────────────────────────────
   // Trabalhamos com os objetos completos { id, name } do backend
@@ -187,7 +190,7 @@ export default function NewNotePage() {
     }
 
     try {
-      const created = await notesApi.create(
+      const dto = await notesApi.createRaw(
         {
           title:   title.trim(),
           content: content.trim(),
@@ -196,6 +199,14 @@ export default function NewNotePage() {
         },
         token,
       );
+
+      if (dto.planMessage) {
+        setPlanMessage(dto.planMessage);
+        setSaving(false);
+        return;
+      }
+
+      const created = parseNoteResponse(dto);
       // Adiciona ao store com os campos de localização (não existem no backend)
       addNote({ ...created, location: location.trim() || undefined });
       setSaved(true);
@@ -217,6 +228,13 @@ export default function NewNotePage() {
   // ─────────────────────────────────────────────────────────────
   return (
     <div className="w-full max-w-3xl space-y-6 animate-fade-in">
+      {planMessage && (
+        <PlanLimitModal
+          message={planMessage}
+          onClose={() => setPlanMessage(null)}
+        />
+      )}
+
       <h1 className="text-3xl font-bold text-foreground">Nova Nota</h1>
 
       {/* Tabs */}

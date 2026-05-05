@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
 export async function POST(req: NextRequest) {
   let formData: FormData;
@@ -29,11 +29,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const data = await pdfParse(buffer);
+    const arrayBuffer = await file.arrayBuffer();
+    const parser = new PDFParse({ data: arrayBuffer });
+    const result = await parser.getText();
+    await parser.destroy();
 
     const title = file.name.replace(/\.pdf$/i, "").replace(/[-_]/g, " ");
-    const content = data.text.trim();
+    const content = result.text.trim();
 
     return NextResponse.json({ title, content });
   } catch (err) {
