@@ -4,6 +4,7 @@
  */
 
 import type { BibleRef, Note } from "@/lib/mock-data";
+import { toApiBookName } from "@/lib/bible-books";
 
 const BASE_URL = "/api/proxy";
 
@@ -309,4 +310,116 @@ export const notesApi = {
       method: "POST",
       body: JSON.stringify(data),
     }, token),
+};
+
+// ─── Busca Generalizada ───────────────────────────────────────────────
+// Contrato do endpoint backend (a implementar):
+//   GET /api/v1/search?q={query}
+//   Headers: Authorization: Bearer {token}
+//   Response 200:
+//     { notes: NoteResponseDTO[], biblePassages: BibleSearchResultDTO[] }
+//   O backend deve buscar notas por título/conteúdo/temas e passagens bíblicas por tema.
+
+export interface BibleSearchResultDTO {
+  reference: string;   // ex: "João 3:16"
+  book: string;
+  chapter: number;
+  verse: number;
+  text: string;
+  translation: string;
+}
+
+export interface SearchResultsDTO {
+  notes: NoteResponseDTO[];
+  biblePassages: BibleSearchResultDTO[];
+}
+
+export const searchApi = {
+  /** GET /api/v1/search?q={query} → notas + passagens bíblicas */
+  search: (query: string, token: string): Promise<SearchResultsDTO> =>
+    request<SearchResultsDTO>(
+      `/api/v1/search?${new URLSearchParams({ q: query })}`,
+      {},
+      token,
+    ),
+};
+
+// ─── Bíblia ───────────────────────────────────────────────────────────
+// Contrato do endpoint backend (a implementar no backend):
+//   GET /api/v1/bible/passages
+//   Query params:
+//     book        string  — nome do livro em PT (ex: "João", "Gênesis")
+//     chapter     number  — número do capítulo
+//     translation string  — código da tradução (ex: "nvi", "almeida")
+//     verseStart? number  — versículo inicial (opcional)
+//     verseEnd?   number  — versículo final (opcional, requer verseStart)
+//   Response 200:
+//     { book: string, chapter: number, translation: string,
+//       verses: [{ verse: number, text: string }] }
+
+export interface BibleVerseDTO {
+  verse: number;
+  text: string;
+}
+
+export interface BiblePassageResponseDTO {
+  book: string;
+  chapter: number;
+  translation: string;
+  verses: BibleVerseDTO[];
+}
+
+export const bibleApi = {
+  /** Busca capítulo completo. Usa /api/bible/chapter como intermediário até backend estar pronto. */
+  getChapter: async (
+    book: string,
+    chapter: number,
+    translation: string,
+  ): Promise<BiblePassageResponseDTO> => {
+    const params = new URLSearchParams({
+      book: toApiBookName(book),
+      chapter: String(chapter),
+      translation,
+    });
+    // TODO: quando backend implementar o endpoint, substituir por:
+    // const res = await fetch(`/api/proxy/api/v1/bible/passages?${new URLSearchParams({ book, chapter: String(chapter), translation })}`);
+    const res = await fetch(`/api/bible/chapter?${params}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new ApiError(res.status, body.error ?? `Erro ${res.status}`);
+    }
+    const data = await res.json();
+    return {
+      book,
+      chapter,
+      translation,
+      verses: (data.verses ?? []).map((v: { verse: number; text: string }) => ({
+        verse: v.verse,
+        text: v.text,
+      })),
+    };
+  },
+
+  /** Busca trecho específico com versículos inicial/final. Requer backend implementado. */
+  getPassage: async (
+    book: string,
+    chapter: number,
+    translation: string,
+    verseStart?: number,
+    verseEnd?: number,
+  ): Promise<BiblePassageResponseDTO> => {
+    const params = new URLSearchParams({
+      book,
+      chapter: String(chapter),
+      translation,
+    });
+    if (verseStart !== undefined) params.set("verseStart", String(verseStart));
+    if (verseEnd !== undefined) params.set("verseEnd", String(verseEnd));
+    const res = await fetch(`/api/proxy/api/v1/bible/passages?${params}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new ApiError(res.status, body.error ?? `Erro ${res.status}`);
+    }
+    return res.json() as Promise<BiblePassageResponseDTO>;
+  },
 };

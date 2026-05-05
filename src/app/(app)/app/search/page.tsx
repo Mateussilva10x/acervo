@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search, Tag, BookOpen, Sparkles } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { formatDate } from "@/lib/utils";
+import { searchApi, BibleSearchResultDTO, parseNoteResponse } from "@/lib/api";
 import type { Note } from "@/lib/mock-data";
 
 const SUGGESTIONS = [
@@ -17,29 +18,38 @@ const SUGGESTIONS = [
 ];
 
 export default function SearchPage() {
-  const notes    = useAppStore((s) => s.notes);
-  const [query,   setQuery]   = useState("");
-  const [results, setResults] = useState<Note[]>([]);
-  const [searched, setSearched] = useState(false);
-  const [loading, setLoading]   = useState(false);
+  const { notes, token } = useAppStore();
+  const [query,        setQuery]        = useState("");
+  const [noteResults,  setNoteResults]  = useState<Note[]>([]);
+  const [bibleResults, setBibleResults] = useState<BibleSearchResultDTO[]>([]);
+  const [searched,     setSearched]     = useState(false);
+  const [loading,      setLoading]      = useState(false);
 
   async function handleSearch(q: string) {
     if (!q.trim()) return;
     setQuery(q);
     setLoading(true);
     setSearched(false);
-    // Busca client-side no store (sem endpoint de busca no backend ainda)
-    await new Promise((r) => setTimeout(r, 300));
-    const lower = q.toLowerCase();
-    setResults(
-      notes.filter(
-        (n) =>
-          n.title.toLowerCase().includes(lower) ||
-          n.content.toLowerCase().includes(lower) ||
-          n.themes.some((t) => t.toLowerCase().includes(lower)) ||
-          n.bibleRefs.some((r) => r.book.toLowerCase().includes(lower)),
-      ),
-    );
+
+    try {
+      const data = await searchApi.search(q, token!);
+      setNoteResults(data.notes.map(parseNoteResponse));
+      setBibleResults(data.biblePassages);
+    } catch {
+      // Backend não implementado ainda — fallback para busca local nas notas
+      const lower = q.toLowerCase();
+      setNoteResults(
+        notes.filter(
+          (n) =>
+            n.title.toLowerCase().includes(lower) ||
+            n.content.toLowerCase().includes(lower) ||
+            n.themes.some((t) => t.toLowerCase().includes(lower)) ||
+            n.bibleRefs.some((r) => r.book.toLowerCase().includes(lower)),
+        ),
+      );
+      setBibleResults([]);
+    }
+
     setSearched(true);
     setLoading(false);
   }
@@ -49,9 +59,11 @@ export default function SearchPage() {
     handleSearch(query);
   }
 
+  const totalResults = noteResults.length + bibleResults.length;
+
   return (
     <div className="w-full space-y-6 animate-fade-in">
-      <h1 className=" text-2xl sm:text-3xl font-bold text-foreground">
+      <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
         Buscar
       </h1>
 
@@ -104,7 +116,7 @@ export default function SearchPage() {
       )}
 
       {/* Empty state */}
-      {searched && !loading && results.length === 0 && (
+      {searched && !loading && totalResults === 0 && (
         <div className="rounded-xl border border-dashed border-border p-12 text-center">
           <Search size={32} className="text-muted-foreground mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">
@@ -114,59 +126,101 @@ export default function SearchPage() {
       )}
 
       {/* Results */}
-      {searched && !loading && results.length > 0 && (
-        <div className="space-y-3">
+      {searched && !loading && totalResults > 0 && (
+        <div className="space-y-6">
           <p className="text-xs text-muted-foreground">
-            {results.length} resultado{results.length !== 1 ? "s" : ""} para{" "}
+            {totalResults} resultado{totalResults !== 1 ? "s" : ""} para{" "}
             <span className="text-foreground">&ldquo;{query}&rdquo;</span>
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {results.map((note, i) => (
-              <Link
-                key={note.id}
-                href={`/app/notes/${note.id}`}
-                className="flex flex-col rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
-              >
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="text-xs font-mono text-gold bg-gold/10 rounded px-1.5 py-0.5 shrink-0">
-                    #{i + 1}
-                  </span>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatDate(note.createdAt)}
-                  </span>
-                </div>
-                <h3 className="text-sm font-semibold text-foreground group-hover:text-gold transition-colors leading-snug">
-                  {note.title}
-                </h3>
-                <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mt-1.5 flex-1">
-                  {note.content}
-                </p>
-                {(note.themes.length > 0 || note.bibleRefs.length > 0) && (
-                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border">
-                    {note.themes.slice(0, 2).map((theme) => (
-                      <span
-                        key={theme}
-                        className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
-                      >
-                        <Tag size={9} />
-                        {theme}
+
+          {/* Notes */}
+          {noteResults.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Tag size={11} />
+                Notas ({noteResults.length})
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {noteResults.map((note, i) => (
+                  <Link
+                    key={note.id}
+                    href={`/app/notes/${note.id}`}
+                    className="flex flex-col rounded-xl border border-border bg-card p-4 hover:border-gold/30 transition-colors group"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-xs font-mono text-gold bg-gold/10 rounded px-1.5 py-0.5 shrink-0">
+                        #{i + 1}
                       </span>
-                    ))}
-                    {note.bibleRefs.slice(0, 1).map((ref) => (
-                      <span
-                        key={`${ref.book}-${ref.chapter}`}
-                        className="inline-flex items-center gap-1 rounded-full border border-gold/20 bg-gold/5 px-2 py-0.5 text-xs text-gold"
-                      >
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatDate(note.createdAt)}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-semibold text-foreground group-hover:text-gold transition-colors leading-snug">
+                      {note.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mt-1.5 flex-1">
+                      {note.content}
+                    </p>
+                    {(note.themes.length > 0 || note.bibleRefs.length > 0) && (
+                      <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border">
+                        {note.themes.slice(0, 2).map((theme) => (
+                          <span
+                            key={theme}
+                            className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground"
+                          >
+                            <Tag size={9} />
+                            {theme}
+                          </span>
+                        ))}
+                        {note.bibleRefs.slice(0, 1).map((ref) => (
+                          <span
+                            key={`${ref.book}-${ref.chapter}`}
+                            className="inline-flex items-center gap-1 rounded-full border border-gold/20 bg-gold/5 px-2 py-0.5 text-xs text-gold"
+                          >
+                            <BookOpen size={9} />
+                            {ref.book} {ref.chapter}
+                            {ref.verseStart ? `:${ref.verseStart}` : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bible Passages */}
+          {bibleResults.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <BookOpen size={11} />
+                Passagens Bíblicas ({bibleResults.length})
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {bibleResults.map((passage) => (
+                  <Link
+                    key={`${passage.book}-${passage.chapter}-${passage.verse}`}
+                    href={`/app/reader?book=${encodeURIComponent(passage.book)}&chapter=${passage.chapter}`}
+                    className="flex flex-col rounded-xl border border-gold/20 bg-card p-4 hover:border-gold/40 transition-colors group"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-gold/20 bg-gold/5 px-2 py-0.5 text-xs text-gold font-medium">
                         <BookOpen size={9} />
-                        {ref.book} {ref.chapter}
-                        {ref.verseStart ? `:${ref.verseStart}` : ""}
+                        {passage.reference}
                       </span>
-                    ))}
-                  </div>
-                )}
-              </Link>
-            ))}
-          </div>
+                      <span className="text-xs text-muted-foreground">
+                        {passage.translation.toUpperCase()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-4 leading-relaxed flex-1 italic">
+                      &ldquo;{passage.text}&rdquo;
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

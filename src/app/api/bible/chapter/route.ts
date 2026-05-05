@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const translation = searchParams.get("tr") || "almeida";
+  const translation = searchParams.get("translation") || searchParams.get("tr") || "almeida";
   const bookName = searchParams.get("book") || "genesis";
   const chapter = searchParams.get("chapter") || "1";
 

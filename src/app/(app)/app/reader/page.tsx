@@ -13,7 +13,8 @@ import {
   X,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
-import { BIBLE_BOOKS, findBookById, toApiBookName } from "@/lib/bible-books";
+import { BIBLE_BOOKS, findBookById } from "@/lib/bible-books";
+import { bibleApi, ApiError } from "@/lib/api";
 import type { Note } from "@/lib/mock-data";
 
 interface Verse {
@@ -220,18 +221,13 @@ function ChapterReader({
     setLoading(true);
     setError(null);
     setVerses([]);
-    const apiName = toApiBookName(currentBook.name);
-    const passage = encodeURIComponent(`${apiName} ${chapter}`);
-    fetch(`https://bible-api.com/${passage}?translation=${translation}`)
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok || data.error)
-          throw new Error(data.error || `Erro ${res.status}`);
-        if (!data.verses || data.verses.length === 0)
+    bibleApi.getChapter(currentBook.name, chapter, translation)
+      .then((data) => {
+        if (data.verses.length === 0)
           throw new Error("Capítulo não encontrado nesta tradução.");
         setVerses(data.verses);
       })
-      .catch((e) => setError(e.message))
+      .catch((e) => setError(e instanceof ApiError ? e.message : (e as Error).message))
       .finally(() => setLoading(false));
   }, [bookId, chapter, translation, currentBook.name]);
 
