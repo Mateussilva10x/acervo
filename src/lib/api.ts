@@ -34,8 +34,8 @@ export interface LoginResponseDTO {
   isFirstLogin: boolean;
 }
 
-export interface ChangePasswordRequestDTO {
-  newPassword: string;
+export interface FirstAccessPasswordDTO {
+  password: string;
 }
 
 export interface ThemeResponseDTO {
@@ -55,6 +55,7 @@ export interface NoteResponseDTO {
   imageUrl?: string | null;
   biblicalReferences: string[]; // ex: ["João 3:16", "Romanos 6:1-14"]
   themes: ThemeResponseDTO[];
+  planMessage?: string | null;  // preenchido quando o usuário atinge o limite do plano
 }
 
 export interface NoteRequestDTO {
@@ -189,10 +190,10 @@ export const authApi = {
   me: (token: string): Promise<UserResponseDTO> =>
     request<UserResponseDTO>("/api/v1/auth/me", {}, token),
 
-  /** PUT /api/v1/auth/change-password → troca de senha no primeiro login */
-  changePassword: (data: ChangePasswordRequestDTO, token: string): Promise<void> =>
-    request<void>("/api/v1/auth/change-password", {
-      method: "PUT",
+  /** POST /api/v1/auth/first-access-password → redefine senha no primeiro login */
+  firstAccessPassword: (data: FirstAccessPasswordDTO, token: string): Promise<void> =>
+    request<void>("/api/v1/auth/first-access-password", {
+      method: "POST",
       body: JSON.stringify(data),
     }, token),
 };
@@ -236,6 +237,10 @@ export const themesApi = {
       method: "POST",
       body: JSON.stringify(data),
     }, token),
+
+  /** DELETE /api/v1/themes/{id} → remove um tema */
+  delete: (id: string, token: string): Promise<void> =>
+    request<void>(`/api/v1/themes/${id}`, { method: "DELETE" }, token),
 };
 
 // ─── Notas ────────────────────────────────────────────────────────
@@ -262,6 +267,32 @@ export const notesApi = {
     return parseNoteResponse(dto);
   },
 
-  // GET/PUT/DELETE /api/v1/notes/{id} não existem no backend ainda.
-  // O detalhe, edição e exclusão são tratados localmente no store Zustand.
+  /** GET /api/v1/notes/{id} → busca nota por ID */
+  getById: async (id: string, token: string): Promise<Note> => {
+    const dto = await request<NoteResponseDTO>(`/api/v1/notes/${id}`, {}, token);
+    return parseNoteResponse(dto);
+  },
+
+  /** PUT /api/v1/notes/{id} → atualiza uma nota */
+  update: async (id: string, data: NoteRequestDTO, token: string): Promise<Note> => {
+    const dto = await request<NoteResponseDTO>(`/api/v1/notes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }, token);
+    return parseNoteResponse(dto);
+  },
+
+  /** DELETE /api/v1/notes/{id} → remove uma nota */
+  delete: (id: string, token: string): Promise<void> =>
+    request<void>(`/api/v1/notes/${id}`, { method: "DELETE" }, token),
+
+  /**
+   * Versão raw que preserva planMessage para detecção de limite de plano.
+   * Use quando precisar checar se o backend retornou aviso de plano.
+   */
+  createRaw: (data: NoteRequestDTO, token: string): Promise<NoteResponseDTO> =>
+    request<NoteResponseDTO>("/api/v1/notes", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token),
 };
