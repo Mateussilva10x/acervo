@@ -8,6 +8,9 @@ export interface User {
   name: string;
   email: string;
   birthDate: string; // "YYYY-MM-DD"
+  role?: string;
+  planType?: "FREE" | "PRO";
+  firstLogin?: boolean;
 }
 
 export interface AuthResponse {

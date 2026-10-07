@@ -2,30 +2,49 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, Tag, BookOpen, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  SlidersHorizontal,
+  Tag,
+  BookOpen,
+  Trash2,
+  Sparkles,
+} from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { formatDate } from "@/lib/utils";
 import { readerUrl } from "@/lib/bible-books";
-import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
 import { notesApi } from "@/lib/api";
-import type { Note } from "@/lib/mock-data";
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
+import { PlanLimitModal } from "@/components/ui/plan-limit-modal";
 
 export default function NotesPage() {
-  const notes      = useAppStore((s) => s.notes);
-  const themes     = useAppStore((s) => s.themes);
-  const token      = useAppStore((s) => s.token);
-  const deleteNote = useAppStore((s) => s.deleteNote);
+  const token        = useAppStore((s) => s.token);
+  const user         = useAppStore((s) => s.user);
+  const notes        = useAppStore((s) => s.notes);
+  const themes       = useAppStore((s) => s.themes);
+  const planUsage    = useAppStore((s) => s.planUsage);
+  const deleteNote   = useAppStore((s) => s.deleteNote);
 
-  const [search,        setSearch]        = useState("");
-  const [filterTheme,   setFilterTheme]   = useState("");
-  const [sortBy,        setSortBy]        = useState<"recent" | "oldest">("recent");
-  const [deleteTarget,  setDeleteTarget]  = useState<Note | null>(null);
-  const [deleting,      setDeleting]      = useState(false);
+  const [search, setSearch]           = useState("");
+  const [filterTheme, setFilterTheme] = useState("");
+  const [sortBy, setSortBy]           = useState<"recent" | "oldest">("recent");
 
-  // Nomes únicos dos temas presentes nas notas (para o filtro)
+  // Exclusão
+  const [deleteTarget, setDeleteTarget] = useState<(typeof notes)[0] | null>(null);
+  const [deleting, setDeleting]         = useState(false);
+
+  // Modal de limite
+  const [showPlanModal, setShowPlanModal] = useState(false);
+
+  // Regras de Plano FREE
+  const isFree = (user?.planType ?? planUsage?.planType ?? "FREE") === "FREE";
+  const maxFreeNotes = 5;
+  const notesCount = notes.length;
+  const reachedNoteLimit = isFree && notesCount >= maxFreeNotes;
+
   const themeNames = useMemo(() => {
-    if (themes.length > 0) return themes.map((t) => t.name);
-    // Fallback: extrai dos próprios dados das notas
+    if (themes.length > 0) return themes.map((t) => t.name).sort();
     const names = new Set<string>();
     notes.forEach((n) => n.themes.forEach((t) => names.add(t)));
     return [...names].sort();
@@ -69,6 +88,15 @@ export default function NotesPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Modal de Limite do Plano */}
+      {showPlanModal && (
+        <PlanLimitModal
+          message="Você atingiu o limite de 5 notas do plano gratuito. Faça upgrade para o PRO para armazenar sermões e estudos bíblicos ilimitados."
+          onClose={() => setShowPlanModal(false)}
+        />
+      )}
+
+      {/* Modal de Exclusão */}
       {deleteTarget && (
         <ConfirmDeleteModal
           title="Deletar nota?"
@@ -86,18 +114,44 @@ export default function NotesPage() {
           onCancel={() => setDeleteTarget(null)}
         />
       )}
+
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-          Todas as notas
-        </h1>
-        <Link
-          href="/app/notes/new"
-          className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-gold text-primary-foreground text-sm font-medium hover:bg-gold-dark transition-colors"
-        >
-          <Plus size={15} />
-          Nova nota
-        </Link>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            Todas as notas
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            Seu acervo de sermões, esboços e ministrações.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {isFree && (
+            <div className="inline-flex items-center gap-1.5 rounded-xl border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs text-gold">
+              <Sparkles size={12} />
+              <span>Plano Free: {notesCount}/5 notas</span>
+            </div>
+          )}
+
+          {reachedNoteLimit ? (
+            <button
+              onClick={() => setShowPlanModal(true)}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-xl border border-gold/40 bg-gold/10 text-gold text-sm font-medium hover:bg-gold/20 transition-colors"
+            >
+              <Sparkles size={14} />
+              Nova nota (Limite atingido)
+            </button>
+          ) : (
+            <Link
+              href="/app/notes/new"
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-gold text-primary-foreground text-sm font-medium hover:bg-gold-dark transition-colors"
+            >
+              <Plus size={15} />
+              Nova nota
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Filters bar */}
@@ -127,7 +181,7 @@ export default function NotesPage() {
               onChange={(e) => setFilterTheme(e.target.value)}
               className="flex-1 sm:flex-none h-9 rounded-xl border border-input bg-transparent px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">Todas</option>
+              <option value="">Todos os temas</option>
               {themeNames.map((t) => (
                 <option key={t} value={t}>
                   {t}

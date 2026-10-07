@@ -446,9 +446,9 @@ function ReaderContent() {
   const router = useRouter();
 
   const [translations, setTranslations] = useState<Translation[]>([]);
-  const [translation, setTranslation] = useState(
-    searchParams.get("tr") || "almeida",
-  );
+  const rawTr = (searchParams.get("tr") || "ACF11").toUpperCase();
+  const initialTr = rawTr === "ALMEIDA" ? "ACF11" : rawTr;
+  const [translation, setTranslation] = useState(initialTr);
   const paramBook = searchParams.get("book");
   const [bookId, setBookId] = useState<number | null>(
     paramBook ? parseInt(paramBook) : null,
@@ -458,14 +458,17 @@ function ReaderContent() {
   );
 
   useEffect(() => {
-    fetch("/api/bible/translations")
-      .then((r) => r.json())
-      .then(setTranslations)
+    bibleApi.getTranslations()
+      .then((data) => {
+        setTranslations(data.map((t) => ({ short_name: t.code, full_name: t.name })));
+      })
       .catch(() => {
         setTranslations([
-          { short_name: "almeida", full_name: "João Ferreira de Almeida (PT)" },
-          { short_name: "web", full_name: "World English Bible" },
-          { short_name: "kjv", full_name: "King James Version" },
+          { short_name: "ACF11", full_name: "Almeida Corrigida Fiel (2011)" },
+          { short_name: "ARA",   full_name: "Almeida Revista e Atualizada (1993)" },
+          { short_name: "ARC09", full_name: "Almeida Revista e Corrigida (2009)" },
+          { short_name: "NAA",   full_name: "Nova Almeida Atualizada (2017)" },
+          { short_name: "NVT",   full_name: "Nova Versão Transformadora (2016)" },
         ]);
       });
   }, []);

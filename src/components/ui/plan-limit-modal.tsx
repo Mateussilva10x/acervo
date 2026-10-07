@@ -1,6 +1,9 @@
 "use client";
 
-import { Sparkles, X, Zap } from "lucide-react";
+import { useState } from "react";
+import { Sparkles, X, Zap, Loader2 } from "lucide-react";
+import { useAppStore } from "@/store/app-store";
+import { paymentApi } from "@/lib/api";
 
 interface PlanLimitModalProps {
   message: string;
@@ -8,13 +11,36 @@ interface PlanLimitModalProps {
 }
 
 export function PlanLimitModal({ message, onClose }: PlanLimitModalProps) {
+  const token = useAppStore((s) => s.token);
+  const [loading, setLoading] = useState(false);
+
+  async function handleUpgrade() {
+    if (!token) {
+      window.location.href = "/app/settings";
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await paymentApi.createCheckout(token);
+      if (res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+      } else {
+        window.location.href = "/app/settings";
+      }
+    } catch {
+      window.location.href = "/app/settings";
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-gold/30 bg-card p-6 shadow-xl">
+      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-gold/30 bg-card p-6 shadow-xl animate-fade-in">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
@@ -64,10 +90,15 @@ export function PlanLimitModal({ message, onClose }: PlanLimitModalProps) {
               Agora não
             </button>
             <button
-              onClick={onClose}
-              className="flex-1 h-10 rounded-xl bg-gold text-primary-foreground text-sm font-medium hover:bg-gold-dark transition-colors flex items-center justify-center gap-2"
+              onClick={handleUpgrade}
+              disabled={loading}
+              className="flex-1 h-10 rounded-xl bg-gold text-primary-foreground text-sm font-medium hover:bg-gold-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
             >
-              <Sparkles size={14} />
+              {loading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Sparkles size={14} />
+              )}
               Fazer upgrade
             </button>
           </div>

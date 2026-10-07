@@ -15,6 +15,9 @@ export interface UserResponseDTO {
   name: string;
   email: string;
   birthDate: string; // "YYYY-MM-DD"
+  role?: string;
+  planType?: "FREE" | "PRO";
+  firstLogin?: boolean;
 }
 
 export interface UserRequestDTO {
@@ -33,10 +36,16 @@ export interface LoginRequestDTO {
 export interface LoginResponseDTO {
   token: string;
   isFirstLogin: boolean;
+  planType?: "FREE" | "PRO";
 }
 
 export interface FirstAccessPasswordDTO {
   password: string;
+}
+
+export interface ChangePasswordDTO {
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface ThemeResponseDTO {
@@ -57,6 +66,8 @@ export interface NoteResponseDTO {
   biblicalReferences: string[]; // ex: ["João 3:16", "Romanos 6:1-14"]
   themes: ThemeResponseDTO[];
   planMessage?: string | null;  // preenchido quando o usuário atinge o limite do plano
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface NoteRequestDTO {
@@ -64,8 +75,32 @@ export interface NoteRequestDTO {
   content: string;
   audioUrl?: string | null;
   imageUrl?: string | null;
-  biblicalReferences: string[]; // obrigatório (pode ser array vazio)
+  biblicalReferences: string[]; // pode ser array vazio
   themeIds?: string[];          // UUIDs dos temas
+}
+
+// ─── Plan & Payment DTOs ──────────────────────────────────────────
+
+export interface PlanUsageDTO {
+  planType: "FREE" | "PRO";
+  notes: {
+    used: number;
+    limit: number | null;
+    canCreate: boolean;
+  };
+  themes: {
+    used: number;
+    limit: number | null;
+    canCreate: boolean;
+  };
+}
+
+export interface CheckoutResponseDTO {
+  checkoutUrl: string;
+  referenceId: string;
+  amountCents: number;
+  currency: string;
+  provider: string;
 }
 
 // ─── Helpers de mapeamento ────────────────────────────────────────
@@ -100,7 +135,6 @@ export function stringToBibleRef(ref: string): BibleRef {
 
 /**
  * Mapeia NoteResponseDTO (backend) → Note (frontend).
- * Campos ausentes no backend (location, createdAt, updatedAt) ficam como defaults.
  */
 export function parseNoteResponse(dto: NoteResponseDTO): Note {
   return {
@@ -109,8 +143,8 @@ export function parseNoteResponse(dto: NoteResponseDTO): Note {
     content:   dto.content,
     themes:    dto.themes.map((t) => t.name),
     bibleRefs: (dto.biblicalReferences ?? []).map(stringToBibleRef),
-    createdAt: new Date().toISOString().split("T")[0],
-    updatedAt: new Date().toISOString().split("T")[0],
+    createdAt: dto.createdAt ? dto.createdAt.split("T")[0] : new Date().toISOString().split("T")[0],
+    updatedAt: dto.updatedAt ? dto.updatedAt.split("T")[0] : new Date().toISOString().split("T")[0],
   };
 }
 
@@ -162,54 +196,52 @@ async function request<T>(
   if (ct.includes("application/json")) {
     return res.json() as Promise<T>;
   }
-  // Resposta texto puro (ex: login retornando JWT como string)
   return res.text() as unknown as T;
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────
 
 export const authApi = {
-  /**
-   * POST /api/v1/auth/login
-   * Retorna token + isFirstLogin. Suporta resposta como string pura (JWT) ou objeto.
-   */
   login: async (data: LoginRequestDTO): Promise<LoginResponseDTO> => {
-    const raw = await request<string | { token: string; isFirstLogin?: boolean }>(
+    const raw = await request<string | { token: string; isFirstLogin?: boolean; firstLogin?: boolean; planType?: "FREE" | "PRO" }>(
       "/api/v1/auth/login",
       { method: "POST", body: JSON.stringify(data) },
     );
     if (typeof raw === "string") {
-      return { token: raw, isFirstLogin: false };
+      return { token: raw, isFirstLogin: false, planType: "FREE" };
     }
     return {
       token: raw.token,
-      isFirstLogin: raw.isFirstLogin ?? false,
+      isFirstLogin: raw.isFirstLogin ?? raw.firstLogin ?? false,
+      planType: raw.planType ?? "FREE",
     };
   },
 
-  /** GET /api/v1/auth/me → dados do usuário logado */
   me: (token: string): Promise<UserResponseDTO> =>
     request<UserResponseDTO>("/api/v1/auth/me", {}, token),
 
-  /** POST /api/v1/auth/first-access-password → redefine senha no primeiro login */
   firstAccessPassword: (data: FirstAccessPasswordDTO, token: string): Promise<void> =>
     request<void>("/api/v1/auth/first-access-password", {
       method: "POST",
       body: JSON.stringify(data),
     }, token),
 
-  /** POST /api/v1/auth/forgot-password → envia email com link de redefinição */
+  changePassword: (data: ChangePasswordDTO, token: string): Promise<void> =>
+    request<void>("/api/v1/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token),
+
   forgotPassword: (email: string): Promise<void> =>
     request<void>("/api/v1/auth/forgot-password", {
       method: "POST",
       body: JSON.stringify({ email }),
     }),
 
-  /** POST /api/v1/auth/reset-password?token=TOKEN → redefine senha com token do email */
   resetPassword: (token: string, newPassword: string): Promise<void> =>
     request<void>(`/api/v1/auth/reset-password?token=${encodeURIComponent(token)}`, {
       method: "POST",
-      body: JSON.stringify({ newPassword }),
+      body: JSON.stringify({ token, newPassword }),
     }),
 };
 
@@ -242,18 +274,21 @@ export const usersApi = {
 // ─── Temas ────────────────────────────────────────────────────────
 
 export const themesApi = {
-  /** GET /api/v1/themes → lista todos os temas */
   getAll: (token: string): Promise<ThemeResponseDTO[]> =>
     request<ThemeResponseDTO[]>("/api/v1/themes", {}, token),
 
-  /** POST /api/v1/themes → cria um novo tema */
   create: (data: ThemeRequestDTO, token: string): Promise<ThemeResponseDTO> =>
     request<ThemeResponseDTO>("/api/v1/themes", {
       method: "POST",
       body: JSON.stringify(data),
     }, token),
 
-  /** DELETE /api/v1/themes/{id} → remove um tema */
+  update: (id: string, data: ThemeRequestDTO, token: string): Promise<ThemeResponseDTO> =>
+    request<ThemeResponseDTO>(`/api/v1/themes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }, token),
+
   delete: (id: string, token: string): Promise<void> =>
     request<void>(`/api/v1/themes/${id}`, { method: "DELETE" }, token),
 };
@@ -261,19 +296,11 @@ export const themesApi = {
 // ─── Notas ────────────────────────────────────────────────────────
 
 export const notesApi = {
-  /**
-   * GET /api/v1/notes → lista todas as notas
-   * Mapeia automaticamente para o tipo Note do frontend.
-   */
   getAll: async (token: string): Promise<Note[]> => {
     const dtos = await request<NoteResponseDTO[]>("/api/v1/notes", {}, token);
     return dtos.map(parseNoteResponse);
   },
 
-  /**
-   * POST /api/v1/notes → cria uma nova nota
-   * Retorna a nota criada já mapeada para o tipo Note.
-   */
   create: async (data: NoteRequestDTO, token: string): Promise<Note> => {
     const dto = await request<NoteResponseDTO>("/api/v1/notes", {
       method: "POST",
@@ -282,13 +309,11 @@ export const notesApi = {
     return parseNoteResponse(dto);
   },
 
-  /** GET /api/v1/notes/{id} → busca nota por ID */
   getById: async (id: string, token: string): Promise<Note> => {
     const dto = await request<NoteResponseDTO>(`/api/v1/notes/${id}`, {}, token);
     return parseNoteResponse(dto);
   },
 
-  /** PUT /api/v1/notes/{id} → atualiza uma nota */
   update: async (id: string, data: NoteRequestDTO, token: string): Promise<Note> => {
     const dto = await request<NoteResponseDTO>(`/api/v1/notes/${id}`, {
       method: "PUT",
@@ -297,14 +322,9 @@ export const notesApi = {
     return parseNoteResponse(dto);
   },
 
-  /** DELETE /api/v1/notes/{id} → remove uma nota */
   delete: (id: string, token: string): Promise<void> =>
     request<void>(`/api/v1/notes/${id}`, { method: "DELETE" }, token),
 
-  /**
-   * Versão raw que preserva planMessage para detecção de limite de plano.
-   * Use quando precisar checar se o backend retornou aviso de plano.
-   */
   createRaw: (data: NoteRequestDTO, token: string): Promise<NoteResponseDTO> =>
     request<NoteResponseDTO>("/api/v1/notes", {
       method: "POST",
@@ -312,16 +332,26 @@ export const notesApi = {
     }, token),
 };
 
-// ─── Busca Generalizada ───────────────────────────────────────────────
-// Contrato do endpoint backend (a implementar):
-//   GET /api/v1/search?q={query}
-//   Headers: Authorization: Bearer {token}
-//   Response 200:
-//     { notes: NoteResponseDTO[], biblePassages: BibleSearchResultDTO[] }
-//   O backend deve buscar notas por título/conteúdo/temas e passagens bíblicas por tema.
+// ─── Plano e Pagamento ────────────────────────────────────────────
+
+export const planApi = {
+  getUsage: (token: string): Promise<PlanUsageDTO> =>
+    request<PlanUsageDTO>("/api/v1/plan/usage", {}, token),
+};
+
+export const paymentApi = {
+  createCheckout: (token: string): Promise<CheckoutResponseDTO> =>
+    request<CheckoutResponseDTO>("/api/v1/payment/checkout", { method: "POST" }, token),
+
+  simulateUpgrade: (token: string): Promise<UserResponseDTO> =>
+    request<UserResponseDTO>("/api/v1/payment/simulate-upgrade", { method: "POST" }, token),
+};
+
+// ─── Busca Generalizada ───────────────────────────────────────────
 
 export interface BibleSearchResultDTO {
-  reference: string;   // ex: "João 3:16"
+  reference: string;
+  bookId: number;
   book: string;
   chapter: number;
   verse: number;
@@ -335,7 +365,6 @@ export interface SearchResultsDTO {
 }
 
 export const searchApi = {
-  /** GET /api/v1/search?q={query} → notas + passagens bíblicas */
   search: (query: string, token: string): Promise<SearchResultsDTO> =>
     request<SearchResultsDTO>(
       `/api/v1/search?${new URLSearchParams({ q: query })}`,
@@ -344,18 +373,20 @@ export const searchApi = {
     ),
 };
 
-// ─── Bíblia ───────────────────────────────────────────────────────────
-// Contrato do endpoint backend (a implementar no backend):
-//   GET /api/v1/bible/passages
-//   Query params:
-//     book        string  — nome do livro em PT (ex: "João", "Gênesis")
-//     chapter     number  — número do capítulo
-//     translation string  — código da tradução (ex: "nvi", "almeida")
-//     verseStart? number  — versículo inicial (opcional)
-//     verseEnd?   number  — versículo final (opcional, requer verseStart)
-//   Response 200:
-//     { book: string, chapter: number, translation: string,
-//       verses: [{ verse: number, text: string }] }
+// ─── Bíblia ───────────────────────────────────────────────────────
+
+export interface BibleTranslationDTO {
+  code: string;
+  name: string;
+}
+
+export interface BibleBookDTO {
+  id: number;
+  name: string;
+  abbrev: string;
+  testament: string;
+  chapters: number;
+}
 
 export interface BibleVerseDTO {
   verse: number;
@@ -363,63 +394,90 @@ export interface BibleVerseDTO {
 }
 
 export interface BiblePassageResponseDTO {
+  bookId: number;
   book: string;
   chapter: number;
+  verseStart?: number | null;
+  verseEnd?: number | null;
   translation: string;
+  reference: string;
   verses: BibleVerseDTO[];
 }
 
 export const bibleApi = {
-  /** Busca capítulo completo. Usa /api/bible/chapter como intermediário até backend estar pronto. */
+  getTranslations: async (): Promise<BibleTranslationDTO[]> => {
+    try {
+      return await request<BibleTranslationDTO[]>("/api/v1/bible/translations");
+    } catch {
+      return [
+        { code: "ACF11", name: "Almeida Corrigida Fiel (2011)" },
+        { code: "ARA",   name: "Almeida Revista e Atualizada (1993)" },
+        { code: "ARC09", name: "Almeida Revista e Corrigida (2009)" },
+        { code: "NAA",   name: "Nova Almeida Atualizada (2017)" },
+        { code: "NVT",   name: "Nova Versão Transformadora (2016)" },
+        { code: "NTLH",  name: "Nova Tradução na Linguagem de Hoje (2000)" },
+        { code: "TB10",  name: "Tradução Brasileira (2010)" },
+        { code: "KJA",   name: "King James Atualizada (2001)" },
+      ];
+    }
+  },
+
+  getBooks: async (testament?: string): Promise<BibleBookDTO[]> => {
+    const q = testament ? `?testament=${encodeURIComponent(testament)}` : "";
+    return request<BibleBookDTO[]>(`/api/v1/bible/books${q}`);
+  },
+
   getChapter: async (
     book: string,
     chapter: number,
-    translation: string,
+    translation = "ACF11",
   ): Promise<BiblePassageResponseDTO> => {
     const params = new URLSearchParams({
       book: toApiBookName(book),
       chapter: String(chapter),
       translation,
     });
-    // TODO: quando backend implementar o endpoint, substituir por:
-    // const res = await fetch(`/api/proxy/api/v1/bible/passages?${new URLSearchParams({ book, chapter: String(chapter), translation })}`);
-    const res = await fetch(`/api/bible/chapter?${params}`);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new ApiError(res.status, body.error ?? `Erro ${res.status}`);
-    }
-    const data = await res.json();
-    return {
-      book,
-      chapter,
-      translation,
-      verses: (data.verses ?? []).map((v: { verse: number; text: string }) => ({
-        verse: v.verse,
-        text: v.text,
-      })),
-    };
+    return request<BiblePassageResponseDTO>(`/api/v1/bible/passages?${params}`);
   },
 
-  /** Busca trecho específico com versículos inicial/final. Requer backend implementado. */
   getPassage: async (
     book: string,
     chapter: number,
-    translation: string,
+    translation = "ACF11",
     verseStart?: number,
     verseEnd?: number,
   ): Promise<BiblePassageResponseDTO> => {
     const params = new URLSearchParams({
-      book,
+      book: toApiBookName(book),
       chapter: String(chapter),
       translation,
     });
     if (verseStart !== undefined) params.set("verseStart", String(verseStart));
     if (verseEnd !== undefined) params.set("verseEnd", String(verseEnd));
-    const res = await fetch(`/api/proxy/api/v1/bible/passages?${params}`);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new ApiError(res.status, body.error ?? `Erro ${res.status}`);
-    }
-    return res.json() as Promise<BiblePassageResponseDTO>;
+    return request<BiblePassageResponseDTO>(`/api/v1/bible/passages?${params}`);
+  },
+
+  getByReference: async (
+    reference: string,
+    translation = "ACF11",
+  ): Promise<BiblePassageResponseDTO> => {
+    const params = new URLSearchParams({
+      ref: reference,
+      translation,
+    });
+    return request<BiblePassageResponseDTO>(`/api/v1/bible/reference?${params}`);
+  },
+
+  search: async (
+    query: string,
+    translation = "ACF11",
+    limit = 20,
+  ): Promise<BibleSearchResultDTO[]> => {
+    const params = new URLSearchParams({
+      q: query,
+      translation,
+      limit: String(limit),
+    });
+    return request<BibleSearchResultDTO[]>(`/api/v1/bible/search?${params}`);
   },
 };
