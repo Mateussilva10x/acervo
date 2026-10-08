@@ -3,8 +3,14 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, Check, Plus } from "lucide-react";
+import { AlertCircle, ArrowLeft, BookOpen, Check, Plus } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
+import {
+  bibleRefToString,
+  notesApi,
+  themesApi,
+  type ThemeResponseDTO,
+} from "@/lib/api";
 import type { Note } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +23,8 @@ export default function EditNotePage({
   const router = useRouter();
   const { notes, updateNote } = useAppStore();
   const storeThemes = useAppStore((s) => s.themes);
+  const setThemes = useAppStore((s) => s.setThemes);
+  const token = useAppStore((s) => s.token);
   const note = notes.find((n) => n.id === id);
   // Nomes únicos para exibição (backend + já usados na nota)
   const allThemeNames = storeThemes.length > 0
@@ -39,6 +47,7 @@ export default function EditNotePage({
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   if (!note) {
     return (
@@ -70,34 +79,70 @@ export default function EditNotePage({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !token) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 500));
+    setSaveError("");
 
-    const patch: Partial<Note> = {
-      title: title.trim(),
-      content: content.trim(),
-      themes: selectedThemes,
-      location: location.trim() || undefined,
-      bibleRefs: bibleBook
-        ? [
-            {
-              book: bibleBook,
-              chapter: parseInt(bibleChapter) || 1,
-              verseStart: bibleVerseStart
-                ? parseInt(bibleVerseStart)
-                : undefined,
-            },
-          ]
-        : [],
-      updatedAt: new Date().toISOString().split("T")[0],
-    };
+    // Referências bíblicas vão como string[] para o backend ("João 3:16")
+    const biblicalReferences: string[] = [];
+    if (bibleBook.trim()) {
+      biblicalReferences.push(
+        bibleRefToString({
+          book: bibleBook.trim(),
+          chapter: parseInt(bibleChapter) || 1,
+          verseStart: bibleVerseStart ? parseInt(bibleVerseStart) : undefined,
+        }),
+      );
+    }
 
-    updateNote(id, patch);
+    try {
+      // O formulário trabalha com nomes de tema; o backend espera UUIDs.
+      // Temas digitados na hora ainda não existem, então são criados antes.
+      const themeIds: string[] = [];
+      const createdThemes: ThemeResponseDTO[] = [];
 
-    setSaved(true);
-    setSaving(false);
-    setTimeout(() => router.push(`/app/notes/${id}`), 800);
+      for (const name of selectedThemes) {
+        const existing = storeThemes.find((t) => t.name === name);
+        if (existing) {
+          themeIds.push(existing.id);
+          continue;
+        }
+        const created = await themesApi.create({ name }, token);
+        createdThemes.push(created);
+        themeIds.push(created.id);
+      }
+
+      if (createdThemes.length > 0) {
+        setThemes([...storeThemes, ...createdThemes]);
+      }
+
+      const updated = await notesApi.update(
+        id,
+        {
+          title: title.trim(),
+          content: content.trim(),
+          biblicalReferences,
+          themeIds,
+        },
+        token,
+      );
+
+      // "location" só existe no store local — o backend não tem esse campo.
+      const patch: Partial<Note> = {
+        ...updated,
+        location: location.trim() || undefined,
+      };
+      updateNote(id, patch);
+
+      setSaved(true);
+      setTimeout(() => router.push(`/app/notes/${id}`), 800);
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "Falha ao salvar alterações.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -228,6 +273,13 @@ export default function EditNotePage({
             </div>
           </div>
         </div>
+
+        {saveError && (
+          <div className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            <span>{saveError}</span>
+          </div>
+        )}
 
         <div className="flex gap-3">
           <button

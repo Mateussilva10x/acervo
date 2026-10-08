@@ -4,11 +4,14 @@ import { NextRequest, NextResponse } from "next/server";
  * Proxy (Next.js 16) — substitui o antigo middleware.ts
  * Roda no Edge antes de qualquer renderização.
  *
- * Rotas públicas: /, /login, /register
+ * Rotas públicas: /, /login, /register, /reset-password
  * Tudo mais exige o cookie "acervo-token" (setado pelo store no login).
  */
 
-const PUBLIC_PATHS = ["/", "/login", "/register"];
+// /reset-password é alcançada pelo link do e-mail de recuperação, quando o
+// usuário por definição não tem sessão. Fora desta lista, o fluxo inteiro de
+// "esqueci minha senha" caía em redirect para "/".
+const PUBLIC_PATHS = ["/", "/login", "/register", "/reset-password"];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
