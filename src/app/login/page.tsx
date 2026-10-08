@@ -15,10 +15,15 @@ function LoginContent() {
   const setAuth = useAppStore((s) => s.setAuth);
   const [step, setStep] = useState<Step>("login");
   const [resetSuccess, setResetSuccess] = useState(false);
+  // Setado pelo middleware e pelo handler de 401 do api.ts quando a sessao cai.
+  const [sessaoExpirada, setSessaoExpirada] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("reset") === "success") {
       setResetSuccess(true);
+    }
+    if (searchParams.get("expirado") === "1") {
+      setSessaoExpirada(true);
     }
   }, [searchParams]);
 
@@ -103,6 +108,11 @@ function LoginContent() {
               {resetSuccess && (
                 <div className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-center text-sm text-green-700">
                   Senha redefinida com sucesso! Faça login com sua nova senha.
+                </div>
+              )}
+              {sessaoExpirada && !resetSuccess && (
+                <div className="mb-4 rounded-lg bg-gold/10 px-3 py-2 text-center text-sm text-foreground">
+                  Sua sessão expirou. Entre novamente para continuar.
                 </div>
               )}
               <form onSubmit={handleLogin} className="space-y-4">

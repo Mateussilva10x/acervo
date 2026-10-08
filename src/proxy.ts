@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { isTokenExpired } from "@/lib/jwt";
+
 /**
  * Proxy (Next.js 16) — substitui o antigo middleware.ts
  * Roda no Edge antes de qualquer renderização.
@@ -27,6 +29,18 @@ export function proxy(req: NextRequest) {
   if (!token) {
     // Sem autenticação → redireciona para a landing page
     return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  // Antes bastava o cookie existir: qualquer valor liberava a área autenticada,
+  // e um token expirado deixava o usuário entrar num app em que toda chamada
+  // falha. A assinatura continua sendo verificada pelo backend; aqui só se
+  // confere a validade para mandar ao login quem já precisa reautenticar.
+  if (isTokenExpired(token)) {
+    const url = new URL("/login", req.url);
+    url.searchParams.set("expirado", "1");
+    const res = NextResponse.redirect(url);
+    res.cookies.delete("acervo-token");
+    return res;
   }
 
   return NextResponse.next();

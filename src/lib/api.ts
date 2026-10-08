@@ -160,6 +160,28 @@ export class ApiError extends Error {
   }
 }
 
+// ─── Sessão expirada ──────────────────────────────────────────────
+
+let onUnauthorized: (() => void) | null = null;
+
+/**
+ * Registra o que fazer quando o backend responder 401. Fica como callback em
+ * vez de importar o store aqui para não criar dependência circular.
+ */
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
+
+/**
+ * Endpoints em que 401 é resposta de negócio, não sessão expirada:
+ * login com senha errada e troca de senha com a senha atual incorreta.
+ * Derrubar a sessão nesses casos seria errado.
+ */
+const AUTH_401_IS_EXPECTED = [
+  "/api/v1/auth/login",
+  "/api/v1/auth/change-password",
+];
+
 // ─── Helper de fetch ──────────────────────────────────────────────
 
 async function request<T>(
@@ -189,6 +211,14 @@ async function request<T>(
     } catch {
       /* resposta sem corpo JSON */
     }
+
+    // O backend passou a distinguir 401 (sessão expirada) de 403 (sem
+    // permissão). Em 401 não adianta a tela mostrar o erro: a sessão acabou,
+    // então o store é limpo e o usuário vai para o login.
+    if (res.status === 401 && !AUTH_401_IS_EXPECTED.some((p) => path.startsWith(p))) {
+      onUnauthorized?.();
+    }
+
     throw new ApiError(res.status, message);
   }
 
