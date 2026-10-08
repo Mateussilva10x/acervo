@@ -192,11 +192,24 @@ async function request<T>(
     throw new ApiError(res.status, message);
   }
 
+  // Vários endpoints respondem 200 sem corpo (first-access-password,
+  // change-password, forgot-password). Chamar res.json() aí lança SyntaxError,
+  // que não é ApiError e acabava virando "não foi possível conectar ao servidor"
+  // na tela, apesar do 200. Por isso o corpo é lido como texto primeiro.
+  const raw = await res.text();
+  if (raw.length === 0) {
+    return undefined as T;
+  }
+
   const ct = res.headers.get("content-type") ?? "";
   if (ct.includes("application/json")) {
-    return res.json() as Promise<T>;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      throw new ApiError(res.status, "Resposta inválida do servidor.");
+    }
   }
-  return res.text() as unknown as T;
+  return raw as unknown as T;
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────
