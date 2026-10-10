@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
  * Tudo mais exige o cookie "acervo-token" (setado pelo store no login).
  */
 
-const PUBLIC_PATHS = ["/", "/login", "/register"];
+const PUBLIC_PATHS = ["/", "/login", "/register", "/reset-password"];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

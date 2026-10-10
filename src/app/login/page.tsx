@@ -35,8 +35,8 @@ function LoginContent() {
     setError("");
     setLoading(true);
     try {
-      const { token, isFirstLogin } = await authApi.login({ email, password });
-      setAuth(token, null);
+      const { token, isFirstLogin, user } = await authApi.login({ email, password });
+      setAuth(token, user ?? null);
       router.push(isFirstLogin ? "/change-password" : "/app/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -55,14 +55,15 @@ function LoginContent() {
 
   async function handleForgotPassword(e: React.FormEvent) {
     e.preventDefault();
+    if (!forgotEmail.trim()) return;
     setError("");
     setLoading(true);
     try {
-      await authApi.forgotPassword(forgotEmail);
+      await authApi.forgotPassword(forgotEmail.trim());
       setStep("forgot-success");
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(`Erro do servidor (${err.status}). Tente novamente.`);
+        setError(err.message || `Erro do servidor (${err.status}). Tente novamente.`);
       } else {
         setError("Não foi possível conectar ao servidor.");
       }

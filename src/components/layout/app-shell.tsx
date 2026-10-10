@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Menu, BookMarked, TriangleAlert } from "lucide-react";
 import { Sidebar } from "./sidebar";
 import { cn } from "@/lib/utils";
+import { Toaster } from "react-hot-toast";
 
 const isProd = process.env.NEXT_PUBLIC_APP_ENV === "production";
 
@@ -63,6 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+      <Toaster position="top-right" toastOptions={{ className: "!bg-card !text-foreground !border !border-border !shadow-lg" }} />
     </div>
   );
 }

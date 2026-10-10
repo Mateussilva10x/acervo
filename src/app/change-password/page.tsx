@@ -9,6 +9,8 @@ import { useAppStore } from "@/store/app-store";
 export default function ChangePasswordPage() {
   const router   = useRouter();
   const token    = useAppStore((s) => s.token);
+  const user     = useAppStore((s) => s.user);
+  const setUser  = useAppStore((s) => s.setUser);
   const logout   = useAppStore((s) => s.logout);
 
   const [newPassword,     setNewPassword]     = useState("");
@@ -28,7 +30,14 @@ export default function ChangePasswordPage() {
     setError("");
     setLoading(true);
     try {
-      await authApi.firstAccessPassword({ password: newPassword }, token);
+      if (user?.id) {
+        await authApi.firstAccessPassword(user.id, newPassword, token);
+      } else {
+        await authApi.firstAccessPassword({ newPassword }, token);
+      }
+      if (user) {
+        setUser({ ...user, isFirstLogin: false, firstLogin: false });
+      }
       router.push("/app/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {

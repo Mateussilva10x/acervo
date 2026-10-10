@@ -12,6 +12,7 @@ import { notesApi, themesApi, authApi, planApi } from "@/lib/api";
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const token        = useAppStore((s) => s.token);
+  const user         = useAppStore((s) => s.user);
   const setNotes     = useAppStore((s) => s.setNotes);
   const setThemes    = useAppStore((s) => s.setThemes);
   const setUser      = useAppStore((s) => s.setUser);
@@ -26,10 +27,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (hydrated && !token) {
+    if (!hydrated) return;
+    if (!token) {
       router.push("/login");
+      return;
     }
-  }, [hydrated, token, router]);
+    if (user?.isFirstLogin || user?.firstLogin) {
+      router.replace("/change-password");
+    }
+  }, [hydrated, token, user, router]);
 
   useEffect(() => {
     if (!hydrated || !token || fetchedRef.current) return;
@@ -43,12 +49,18 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     ]).then(([notes, themes, userProfile, planUsage]) => {
       if (notes) setNotes(notes);
       if (themes) setThemes(themes);
-      if (userProfile) setUser(userProfile);
+      if (userProfile) {
+        setUser(userProfile);
+        if (userProfile.isFirstLogin || userProfile.firstLogin) {
+          router.replace("/change-password");
+          return;
+        }
+      }
       if (planUsage) setPlanUsage(planUsage);
     });
-  }, [hydrated, token, setNotes, setThemes, setUser, setPlanUsage]);
+  }, [hydrated, token, router, setNotes, setThemes, setUser, setPlanUsage]);
 
-  if (!hydrated || !token) return null;
+  if (!hydrated || !token || user?.isFirstLogin || user?.firstLogin) return null;
 
   return <>{children}</>;
 }
