@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 import type { User } from "@/lib/auth";
 import type { Note } from "@/lib/mock-data";
 import type { ThemeResponseDTO, PlanUsageDTO } from "@/lib/api";
+import { getTokenExpiry } from "@/lib/jwt";
 
 interface AppState {
   // Auth
@@ -45,10 +46,15 @@ export const useAppStore = create<AppState>()(
       user: null,
       setAuth: (token, user) => {
         if (typeof document !== "undefined") {
+          // O cookie acompanha a validade real do token. Antes durava 7 dias
+          // enquanto o JWT valia 2 horas: o middleware continuava liberando as
+          // rotas e toda chamada de API falhava, com o app renderizando vazio.
+          const expiry = getTokenExpiry(token);
           const expires = new Date(
-            Date.now() + 7 * 24 * 60 * 60 * 1000,
+            expiry ?? Date.now() + 2 * 60 * 60 * 1000,
           ).toUTCString();
-          document.cookie = `acervo-token=${token}; path=/; expires=${expires}; SameSite=Lax`;
+          const secure = window.location.protocol === "https:" ? "; Secure" : "";
+          document.cookie = `acervo-token=${token}; path=/; expires=${expires}; SameSite=Lax${secure}`;
         }
         set({ token, user });
       },

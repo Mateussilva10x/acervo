@@ -10,10 +10,12 @@ import {
   MapPin,
   Calendar,
   Trash2,
+  AlertCircle,
   Pencil,
   FileText,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
+import { notesApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { readerUrl } from "@/lib/bible-books";
 import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
@@ -26,8 +28,11 @@ export default function NoteDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const { notes, deleteNote } = useAppStore();
+  const token = useAppStore((s) => s.token);
   const note = notes.find((n) => n.id === id);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   if (!note) {
     return (
@@ -44,9 +49,21 @@ export default function NoteDetailPage({
     );
   }
 
-  function handleConfirmDelete() {
-    deleteNote(id);
-    router.push("/app/notes");
+  async function handleConfirmDelete() {
+    if (!token) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      // Antes isso removia só do store: a nota sumia da tela e continuava no backend.
+      await notesApi.delete(id, token);
+      deleteNote(id);
+      router.push("/app/notes");
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Falha ao excluir a nota.",
+      );
+      setDeleting(false);
+    }
   }
 
   return (
@@ -63,12 +80,20 @@ export default function NoteDetailPage({
               será removida permanentemente. Esta ação não pode ser desfeita.
             </>
           }
+          loading={deleting}
           onConfirm={handleConfirmDelete}
           onCancel={() => setShowDeleteModal(false)}
         />
       )}
 
       <div className="space-y-4 animate-fade-in">
+        {deleteError && (
+          <div className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
+            <span>{deleteError}</span>
+          </div>
+        )}
+
         {/* Top action bar */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <Link

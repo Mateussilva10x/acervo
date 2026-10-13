@@ -10,6 +10,7 @@ import {
   BookOpen,
   Trash2,
   Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { formatDate } from "@/lib/utils";
@@ -33,6 +34,7 @@ export default function NotesPage() {
   // Exclusão
   const [deleteTarget, setDeleteTarget] = useState<(typeof notes)[0] | null>(null);
   const [deleting, setDeleting]         = useState(false);
+  const [deleteError, setDeleteError]   = useState("");
 
   // Modal de limite
   const [showPlanModal, setShowPlanModal] = useState(false);
@@ -75,19 +77,31 @@ export default function NotesPage() {
   async function handleConfirmDelete() {
     if (!deleteTarget || !token) return;
     setDeleting(true);
+    setDeleteError("");
     try {
       await notesApi.delete(deleteTarget.id, token);
-    } catch {
-      // Se o backend falhar, ainda remove localmente
-    } finally {
+      // Só remove do store depois que o backend confirma. Antes, a remoção
+      // acontecia no finally mesmo em caso de erro, e o store divergia do banco.
       deleteNote(deleteTarget.id);
       setDeleteTarget(null);
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Falha ao excluir a nota.",
+      );
+    } finally {
       setDeleting(false);
     }
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {deleteError && (
+        <div className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span>{deleteError}</span>
+        </div>
+      )}
+
       {/* Modal de Limite do Plano */}
       {showPlanModal && (
         <PlanLimitModal

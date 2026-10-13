@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tipos
+        run: npx tsc --noEmit
+
+      # Nao bloqueante por enquanto: ha 3 erros pre-existentes, anteriores a
+      # este CI, que exigem mudancas em componentes criticos e merecem um PR
+      # proprio:
+      #   components/ui/input.tsx:6      interface vazia
+      #   components/layout/auth-guard.tsx:37  setState sincrono em efeito
+      #   app/(app)/app/reader/page.tsx:235    setState sincrono em efeito
+      # Trocar para bloqueante assim que forem resolvidos.
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Testes de unidade
+        run: npm test
+
+      - name: Build
+        run: npm run build

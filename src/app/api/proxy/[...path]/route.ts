@@ -46,8 +46,24 @@ async function proxy(
 
   try {
     const res = await fetch(url, init);
-    const ct = res.headers.get("content-type") ?? "application/json";
+
+    // 204/205/304 não podem carregar corpo: construir uma Response com body
+    // (mesmo string vazia) lança TypeError, e o catch abaixo mascarava isso
+    // como "backend indisponível" (503) mesmo quando o DELETE tinha funcionado.
+    if (res.status === 204 || res.status === 205 || res.status === 304) {
+      return new NextResponse(null, { status: res.status });
+    }
+
     const body = await res.text();
+
+    // Respostas 200 sem corpo (ex.: forgot-password, change-password) chegam sem
+    // Content-Type. Carimbar "application/json" aqui fazia o cliente tentar
+    // parsear uma string vazia. Sem corpo, nenhum Content-Type é enviado.
+    if (body.length === 0) {
+      return new NextResponse(null, { status: res.status });
+    }
+
+    const ct = res.headers.get("content-type") ?? "application/json";
 
     return new NextResponse(body, {
       status: res.status,

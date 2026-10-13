@@ -46,3 +46,8 @@ AGENTS.md
 .claude/
 graphify-out/
 .obsidian/
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
