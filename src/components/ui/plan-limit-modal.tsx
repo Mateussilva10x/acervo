@@ -21,7 +21,7 @@ export function PlanLimitModal({ message, onClose }: PlanLimitModalProps) {
     }
     setLoading(true);
     try {
-      const res = await paymentApi.createCheckout(token);
+      const res = await paymentApi.createCheckoutSession(token);
       if (res.checkoutUrl) {
         window.location.href = res.checkoutUrl;
       } else {

@@ -201,7 +201,7 @@ export default function SearchPage() {
                 {bibleResults.map((passage) => (
                   <Link
                     key={`${passage.book}-${passage.chapter}-${passage.verse}`}
-                    href={`/app/reader?book=${encodeURIComponent(passage.book)}&chapter=${passage.chapter}`}
+                    href={`/app/reader?book=${encodeURIComponent(passage.bookId ?? passage.book ?? "")}&chapter=${passage.chapter ?? 1}`}
                     className="flex flex-col rounded-xl border border-gold/20 bg-card p-4 hover:border-gold/40 transition-colors group"
                   >
                     <div className="flex items-center justify-between gap-2 mb-2">
@@ -210,7 +210,7 @@ export default function SearchPage() {
                         {passage.reference}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {passage.translation.toUpperCase()}
+                        {(passage.translation ?? "ACF11").toUpperCase()}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-4 leading-relaxed flex-1 italic">

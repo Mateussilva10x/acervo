@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   FileText,
   FileUp,
@@ -32,23 +32,33 @@ interface PdfImportResult {
   content?: string;
 }
 
-export default function NewNotePage() {
+function NewNoteContent() {
   const router   = useRouter();
+  const searchParams = useSearchParams();
   const token    = useAppStore((s) => s.token);
   const addNote  = useAppStore((s) => s.addNote);
   const storeThemes  = useAppStore((s) => s.themes);
   const setStoreThemes = useAppStore((s) => s.setThemes);
 
+  const paramBook = searchParams.get("book") ?? "";
+  const paramChapter = searchParams.get("chapter") ?? "";
+  const paramVerseStart = searchParams.get("verseStart") ?? searchParams.get("verse") ?? "";
+  const paramVerseEnd = searchParams.get("verseEnd") ?? "";
+  const paramTitle = searchParams.get("title") ?? "";
+  const paramContent = searchParams.get("content") ?? "";
+
   const [tab, setTab] = useState<Tab>("text");
 
   // ── Form fields ───────────────────────────────────────────────
-  const [title,          setTitle]          = useState("");
-  const [content,        setContent]        = useState("");
+  const [title,          setTitle]          = useState(
+    paramTitle || (paramBook ? `Reflexão: ${paramBook} ${paramChapter}${paramVerseStart ? `:${paramVerseStart}` : ""}` : "")
+  );
+  const [content,        setContent]        = useState(paramContent ? `"${paramContent}"\n\n` : "");
   const [location,       setLocation]       = useState("");
-  const [bibleBook,      setBibleBook]      = useState("");
-  const [bibleChapter,   setBibleChapter]   = useState("");
-  const [bibleVerseStart,setBibleVerseStart]= useState("");
-  const [bibleVerseEnd,  setBibleVerseEnd]  = useState("");
+  const [bibleBook,      setBibleBook]      = useState(paramBook);
+  const [bibleChapter,   setBibleChapter]   = useState(paramChapter);
+  const [bibleVerseStart,setBibleVerseStart]= useState(paramVerseStart);
+  const [bibleVerseEnd,  setBibleVerseEnd]  = useState(paramVerseEnd);
   const [saving,         setSaving]         = useState(false);
   const [saved,          setSaved]          = useState(false);
   const [saveError,      setSaveError]      = useState("");
@@ -544,5 +554,13 @@ export default function NewNotePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function NewNotePage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-sm text-muted-foreground">Carregando editor...</div>}>
+      <NewNoteContent />
+    </Suspense>
   );
 }

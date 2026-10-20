@@ -21,6 +21,7 @@ import { isTokenExpired } from "@/lib/jwt";
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const token        = useAppStore((s) => s.token);
+  const user         = useAppStore((s) => s.user);
   const setNotes     = useAppStore((s) => s.setNotes);
   const setThemes    = useAppStore((s) => s.setThemes);
   const setUser      = useAppStore((s) => s.setUser);
@@ -61,8 +62,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (isTokenExpired(token)) {
       logout();
       router.push("/login?expirado=1");
+      return;
     }
-  }, [hydrated, token, router, logout]);
+
+    if (user?.isFirstLogin || user?.firstLogin) {
+      router.replace("/change-password");
+    }
+  }, [hydrated, token, user, router, logout]);
 
   useEffect(() => {
     if (!hydrated || !token || fetchedRef.current) return;
@@ -77,23 +83,27 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       .then(([notes, themes, userProfile, planUsage]) => {
         setNotes(notes);
         setThemes(themes);
-        setUser(userProfile);
+        if (userProfile) {
+          setUser(userProfile);
+          if (userProfile.isFirstLogin || userProfile.firstLogin) {
+            router.replace("/change-password");
+            return;
+          }
+        }
         setPlanUsage(planUsage);
       })
       .catch((err) => {
         // 401 já é tratado pelo handler acima (logout + redirect).
         if (err instanceof ApiError && err.status === 401) return;
-        // Antes cada chamada tinha .catch(() => null): o app renderizava vazio,
-        // sem erro e sem explicação, como se o acervo tivesse sumido.
         setLoadError(
           err instanceof Error
             ? err.message
             : "Não foi possível carregar seus dados.",
         );
       });
-  }, [hydrated, token, reloadKey, setNotes, setThemes, setUser, setPlanUsage]);
+  }, [hydrated, token, reloadKey, router, setNotes, setThemes, setUser, setPlanUsage]);
 
-  if (!hydrated || !token) return null;
+  if (!hydrated || !token || user?.isFirstLogin || user?.firstLogin) return null;
 
   if (loadError) {
     return (

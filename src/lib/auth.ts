@@ -7,10 +7,11 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  birthDate: string; // "YYYY-MM-DD"
+  birthDate?: string; // "YYYY-MM-DD"
   role?: string;
   planType?: "FREE" | "PRO";
   firstLogin?: boolean;
+  isFirstLogin?: boolean;
 }
 
 export interface AuthResponse {

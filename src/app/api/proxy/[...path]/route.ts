@@ -105,3 +105,10 @@ export async function DELETE(
 ) {
   return proxy(req, await params, "DELETE");
 }
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> },
+) {
+  return proxy(req, await params, "PATCH");
+}

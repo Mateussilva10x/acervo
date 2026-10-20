@@ -77,12 +77,14 @@ export default function SettingsPage() {
     if (!token) return;
     setUpgrading(true);
     try {
-      const res = await paymentApi.createCheckout(token);
+      const res = await paymentApi.createCheckoutSession(token);
       if (res.checkoutUrl) {
         window.location.href = res.checkoutUrl;
+      } else {
+        alert("Não foi possível obter a URL de pagamento. Tente novamente.");
       }
-    } catch {
-      alert("Não foi possível iniciar o checkout no momento.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Não foi possível iniciar o checkout no momento.");
     } finally {
       setUpgrading(false);
     }

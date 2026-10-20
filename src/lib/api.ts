@@ -4,20 +4,40 @@
  */
 
 import type { BibleRef, Note } from "@/lib/mock-data";
-import { toApiBookName } from "@/lib/bible-books";
+import { BIBLE_BOOKS, toApiBookName } from "@/lib/bible-books";
 
 const BASE_URL = "/api/proxy";
 
-// ─── DTOs (espelham exatamente o Swagger) ────────────────────────
+// ─── Helpers Utilitários ──────────────────────────────────────────
+
+export function parseJwt<T = Record<string, any>>(token: string): T | null {
+  try {
+    const base64Url = token.split(".")[1];
+    if (!base64Url) return null;
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
+// ─── DTOs (espelham o Swagger / Backend Spring Boot 3) ────────────
 
 export interface UserResponseDTO {
   id: string;       // UUID
   name: string;
   email: string;
-  birthDate: string; // "YYYY-MM-DD"
+  birthDate?: string; // "YYYY-MM-DD"
   role?: string;
   planType?: "FREE" | "PRO";
   firstLogin?: boolean;
+  isFirstLogin?: boolean;
 }
 
 export interface UserRequestDTO {
@@ -36,11 +56,14 @@ export interface LoginRequestDTO {
 export interface LoginResponseDTO {
   token: string;
   isFirstLogin: boolean;
+  role?: string;
   planType?: "FREE" | "PRO";
+  user?: UserResponseDTO;
 }
 
 export interface FirstAccessPasswordDTO {
-  password: string;
+  password?: string;
+  newPassword?: string;
 }
 
 export interface ChangePasswordDTO {
@@ -97,13 +120,63 @@ export interface PlanUsageDTO {
 
 export interface CheckoutResponseDTO {
   checkoutUrl: string;
-  referenceId: string;
-  amountCents: number;
-  currency: string;
-  provider: string;
+  referenceId?: string;
+  amountCents?: number;
+  currency?: string;
+  provider?: string;
 }
 
-// ─── Helpers de mapeamento ────────────────────────────────────────
+// ─── Bíblia DTOs ──────────────────────────────────────────────────
+
+export interface BibleTranslationDTO {
+  code: string;
+  name: string;
+  language?: string;
+}
+
+export interface BibleBookDTO {
+  id: number | string;
+  name: string;
+  abbrev?: string;
+  testament: string; // "AT" | "NT"
+  chapters?: number;
+}
+
+export interface BibleVerseDTO {
+  verse: number;
+  text: string;
+}
+
+export interface BibleChapterResponseDTO {
+  bookId?: number | string;
+  book?: string;
+  chapter: number;
+  translation: string;
+  verses: BibleVerseDTO[];
+}
+
+export interface BibleSearchResultDTO {
+  reference?: string;
+  bookId?: number | string;
+  book?: string;
+  chapter?: number;
+  verse?: number;
+  text: string;
+  translation?: string;
+}
+
+export interface BiblePassageResponseDTO {
+  bookId?: number | string;
+  book: string;
+  chapter: number;
+  verseStart?: number | null;
+  verseEnd?: number | null;
+  translation: string;
+  reference?: string;
+  verses: BibleVerseDTO[];
+}
+
+// ─── Helpers de Mapeamento de Notas ───────────────────────────────
 
 /**
  * Converte BibleRef → string para o backend.
@@ -148,7 +221,7 @@ export function parseNoteResponse(dto: NoteResponseDTO): Note {
   };
 }
 
-// ─── Erro tipado ──────────────────────────────────────────────────
+// ─── Erro Tipado ──────────────────────────────────────────────────
 
 export class ApiError extends Error {
   constructor(
@@ -242,38 +315,115 @@ async function request<T>(
   return raw as unknown as T;
 }
 
-// ─── Auth ─────────────────────────────────────────────────────────
+// ─── Auth API ─────────────────────────────────────────────────────
 
 export const authApi = {
   login: async (data: LoginRequestDTO): Promise<LoginResponseDTO> => {
-    const raw = await request<string | { token: string; isFirstLogin?: boolean; firstLogin?: boolean; planType?: "FREE" | "PRO" }>(
+    const raw = await request<any>(
       "/api/v1/auth/login",
       { method: "POST", body: JSON.stringify(data) },
     );
+
+    let token = "";
+    let isFirstLogin = false;
+    let role = "USER";
+    let planType: "FREE" | "PRO" = "FREE";
+    let user: UserResponseDTO | undefined = undefined;
+
     if (typeof raw === "string") {
-      return { token: raw, isFirstLogin: false, planType: "FREE" };
+      token = raw;
+    } else if (raw && typeof raw === "object") {
+      token = raw.token ?? "";
+      isFirstLogin = raw.isFirstLogin ?? raw.firstLogin ?? false;
+      role = raw.role ?? "USER";
+      planType = raw.planType ?? "FREE";
+      if (raw.user) user = raw.user;
     }
+
+    if (token) {
+      const claims = parseJwt(token);
+      if (claims) {
+        if (claims.isFirstLogin !== undefined) isFirstLogin = Boolean(claims.isFirstLogin);
+        if (claims.firstLogin !== undefined) isFirstLogin = Boolean(claims.firstLogin);
+        if (claims.role) role = claims.role;
+        if (claims.planType) planType = claims.planType;
+        if (!user && (claims.id || claims.userId || claims.sub)) {
+          user = {
+            id: String(claims.id || claims.userId || claims.sub),
+            name: claims.name || claims.sub || data.email,
+            email: claims.email || data.email,
+            birthDate: claims.birthDate || "",
+            role,
+            planType,
+            isFirstLogin,
+            firstLogin: isFirstLogin,
+          };
+        }
+      }
+    }
+
     return {
-      token: raw.token,
-      isFirstLogin: raw.isFirstLogin ?? raw.firstLogin ?? false,
-      planType: raw.planType ?? "FREE",
+      token,
+      isFirstLogin,
+      role,
+      planType,
+      user,
     };
   },
 
   me: (token: string): Promise<UserResponseDTO> =>
     request<UserResponseDTO>("/api/v1/auth/me", {}, token),
 
-  firstAccessPassword: (data: FirstAccessPasswordDTO, token: string): Promise<void> =>
-    request<void>("/api/v1/auth/first-access-password", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }, token),
+  firstAccessPassword: async (
+    idOrData: string | FirstAccessPasswordDTO,
+    newPasswordOrToken?: string,
+    tokenParam?: string,
+  ): Promise<void> => {
+    if (typeof idOrData === "string" && newPasswordOrToken) {
+      return request<void>(
+        `/api/v1/users/${encodeURIComponent(idOrData)}/first-access-password`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ newPassword: newPasswordOrToken }),
+        },
+        tokenParam,
+      );
+    }
 
-  changePassword: (data: ChangePasswordDTO, token: string): Promise<void> =>
-    request<void>("/api/v1/auth/change-password", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }, token),
+    const payload = idOrData as any;
+    const pwd = payload.newPassword || payload.password;
+    const tok = newPasswordOrToken;
+
+    let userId: string | null = null;
+    if (tok) {
+      const claims = parseJwt(tok);
+      userId = claims?.id || claims?.userId || claims?.sub;
+    }
+
+    if (userId) {
+      try {
+        return await request<void>(
+          `/api/v1/users/${encodeURIComponent(userId)}/first-access-password`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ newPassword: pwd }),
+          },
+          tok,
+        );
+      } catch (err: any) {
+        if (err?.status !== 404 && err?.status !== 405) throw err;
+      }
+    }
+
+    return request<void>(
+      "/api/v1/auth/first-access-password",
+      {
+        method: "POST",
+        body: JSON.stringify({ newPassword: pwd, password: pwd }),
+      },
+      tok,
+    );
+  },
 
   forgotPassword: (email: string): Promise<void> =>
     request<void>("/api/v1/auth/forgot-password", {
@@ -282,13 +432,19 @@ export const authApi = {
     }),
 
   resetPassword: (token: string, newPassword: string): Promise<void> =>
-    request<void>(`/api/v1/auth/reset-password?token=${encodeURIComponent(token)}`, {
+    request<void>("/api/v1/auth/reset-password", {
       method: "POST",
       body: JSON.stringify({ token, newPassword }),
     }),
+
+  changePassword: (data: ChangePasswordDTO, token: string): Promise<void> =>
+    request<void>("/api/v1/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, token),
 };
 
-// ─── Usuários ─────────────────────────────────────────────────────
+// ─── Usuários API ─────────────────────────────────────────────────
 
 export const usersApi = {
   create: (data: UserRequestDTO): Promise<UserResponseDTO> =>
@@ -314,7 +470,7 @@ export const usersApi = {
     request<UserResponseDTO[]>("/api/v1/users", {}, token),
 };
 
-// ─── Temas ────────────────────────────────────────────────────────
+// ─── Temas API ────────────────────────────────────────────────────
 
 export const themesApi = {
   getAll: (token: string): Promise<ThemeResponseDTO[]> =>
@@ -336,7 +492,7 @@ export const themesApi = {
     request<void>(`/api/v1/themes/${id}`, { method: "DELETE" }, token),
 };
 
-// ─── Notas ────────────────────────────────────────────────────────
+// ─── Notas API ────────────────────────────────────────────────────
 
 export const notesApi = {
   getAll: async (token: string): Promise<Note[]> => {
@@ -375,113 +531,170 @@ export const notesApi = {
     }, token),
 };
 
-// ─── Plano e Pagamento ────────────────────────────────────────────
+// ─── Plano e Pagamento API ────────────────────────────────────────
 
 export const planApi = {
-  getUsage: (token: string): Promise<PlanUsageDTO> =>
-    request<PlanUsageDTO>("/api/v1/plan/usage", {}, token),
+  getUsage: async (token: string): Promise<PlanUsageDTO> => {
+    try {
+      return await request<PlanUsageDTO>("/api/v1/plans/usage", {}, token);
+    } catch (err: any) {
+      if (err?.status === 404) {
+        return request<PlanUsageDTO>("/api/v1/plan/usage", {}, token);
+      }
+      throw err;
+    }
+  },
 };
 
 export const paymentApi = {
+  createCheckoutSession: async (token: string): Promise<CheckoutResponseDTO> => {
+    try {
+      return await request<CheckoutResponseDTO>(
+        "/api/v1/payments/checkout",
+        { method: "POST" },
+        token,
+      );
+    } catch (err: any) {
+      if (err?.status === 404) {
+        return request<CheckoutResponseDTO>(
+          "/api/v1/payment/checkout",
+          { method: "POST" },
+          token,
+        );
+      }
+      throw err;
+    }
+  },
+
   createCheckout: (token: string): Promise<CheckoutResponseDTO> =>
-    request<CheckoutResponseDTO>("/api/v1/payment/checkout", { method: "POST" }, token),
+    paymentApi.createCheckoutSession(token),
 
   simulateUpgrade: (token: string): Promise<UserResponseDTO> =>
     request<UserResponseDTO>("/api/v1/payment/simulate-upgrade", { method: "POST" }, token),
 };
 
-// ─── Busca Generalizada ───────────────────────────────────────────
+export const createCheckoutSession = paymentApi.createCheckoutSession;
 
-export interface BibleSearchResultDTO {
-  reference: string;
-  bookId: number;
-  book: string;
-  chapter: number;
-  verse: number;
-  text: string;
-  translation: string;
-}
-
-export interface SearchResultsDTO {
-  notes: NoteResponseDTO[];
-  biblePassages: BibleSearchResultDTO[];
-}
-
-export const searchApi = {
-  search: (query: string, token: string): Promise<SearchResultsDTO> =>
-    request<SearchResultsDTO>(
-      `/api/v1/search?${new URLSearchParams({ q: query })}`,
-      {},
-      token,
-    ),
-};
-
-// ─── Bíblia ───────────────────────────────────────────────────────
-
-export interface BibleTranslationDTO {
-  code: string;
-  name: string;
-}
-
-export interface BibleBookDTO {
-  id: number;
-  name: string;
-  abbrev: string;
-  testament: string;
-  chapters: number;
-}
-
-export interface BibleVerseDTO {
-  verse: number;
-  text: string;
-}
-
-export interface BiblePassageResponseDTO {
-  bookId: number;
-  book: string;
-  chapter: number;
-  verseStart?: number | null;
-  verseEnd?: number | null;
-  translation: string;
-  reference: string;
-  verses: BibleVerseDTO[];
-}
+// ─── Bíblia API ───────────────────────────────────────────────────
 
 export const bibleApi = {
   getTranslations: async (): Promise<BibleTranslationDTO[]> => {
     try {
-      return await request<BibleTranslationDTO[]>("/api/v1/bible/translations");
+      const data = await request<any[]>("/api/v1/bible/translations");
+      if (Array.isArray(data) && data.length > 0) {
+        return data.map((t) => ({
+          code: t.code || t.identifier || t.short_name || t.id || "",
+          name: t.name || t.full_name || t.code || "",
+          language: t.language,
+        }));
+      }
     } catch {
-      return [
-        { code: "ACF11", name: "Almeida Corrigida Fiel (2011)" },
-        { code: "ARA",   name: "Almeida Revista e Atualizada (1993)" },
-        { code: "ARC09", name: "Almeida Revista e Corrigida (2009)" },
-        { code: "NAA",   name: "Nova Almeida Atualizada (2017)" },
-        { code: "NVT",   name: "Nova Versão Transformadora (2016)" },
-        { code: "NTLH",  name: "Nova Tradução na Linguagem de Hoje (2000)" },
-        { code: "TB10",  name: "Tradução Brasileira (2010)" },
-        { code: "KJA",   name: "King James Atualizada (2001)" },
-      ];
+      // Fallback gracioso
     }
+    return [
+      { code: "ACF11", name: "Almeida Corrigida Fiel (2011)" },
+      { code: "ARA",   name: "Almeida Revista e Atualizada (1993)" },
+      { code: "ARC09", name: "Almeida Revista e Corrigida (2009)" },
+      { code: "NAA",   name: "Nova Almeida Atualizada (2017)" },
+      { code: "NVT",   name: "Nova Versão Transformadora (2016)" },
+      { code: "NTLH",  name: "Nova Tradução na Linguagem de Hoje (2000)" },
+      { code: "TB10",  name: "Tradução Brasileira (2010)" },
+      { code: "KJA",   name: "King James Atualizada (2001)" },
+    ];
   },
 
   getBooks: async (testament?: string): Promise<BibleBookDTO[]> => {
     const q = testament ? `?testament=${encodeURIComponent(testament)}` : "";
-    return request<BibleBookDTO[]>(`/api/v1/bible/books${q}`);
+    try {
+      const data = await request<any[]>(`/api/v1/bible/books${q}`);
+      if (Array.isArray(data) && data.length > 0) {
+        return data.map((b) => ({
+          id: b.id ?? b.bookId ?? b.identifier,
+          name: b.name,
+          abbrev: b.abbrev ?? b.abbreviation ?? "",
+          testament: b.testament,
+          chapters: b.chapters ?? b.totalChapters ?? 1,
+        }));
+      }
+    } catch {
+      // Fallback
+    }
+    return BIBLE_BOOKS.map((b) => ({
+      id: b.id,
+      name: b.name,
+      abbrev: "",
+      testament: b.testament,
+      chapters: b.chapters,
+    })).filter((b) => !testament || b.testament === testament);
   },
 
   getChapter: async (
-    book: string,
-    chapter: number,
-    translation = "ACF11",
-  ): Promise<BiblePassageResponseDTO> => {
-    const params = new URLSearchParams({
-      book: toApiBookName(book),
-      chapter: String(chapter),
-      translation,
-    });
-    return request<BiblePassageResponseDTO>(`/api/v1/bible/passages?${params}`);
+    translation: string,
+    bookId: string | number,
+    chapter: string | number,
+  ): Promise<BibleChapterResponseDTO> => {
+    const path = `/api/v1/bible/${encodeURIComponent(translation)}/${encodeURIComponent(bookId)}/${encodeURIComponent(chapter)}`;
+    const res = await request<any>(path);
+
+    if (Array.isArray(res)) {
+      return {
+        bookId,
+        chapter: Number(chapter),
+        translation,
+        verses: res.map((v) => ({
+          verse: v.verse ?? v.number ?? v.verseNumber ?? 0,
+          text: (v.text ?? v.verseText ?? "").trim(),
+        })),
+      };
+    }
+
+    const rawVerses: any[] = res.verses ?? res.items ?? [];
+    return {
+      bookId: res.bookId ?? bookId,
+      book: res.book,
+      chapter: res.chapter ? Number(res.chapter) : Number(chapter),
+      translation: res.translation ?? translation,
+      verses: rawVerses.map((v) => ({
+        verse: v.verse ?? v.number ?? v.verseNumber ?? 0,
+        text: (v.text ?? v.verseText ?? "").trim(),
+      })),
+    };
   },
+
+  searchVerses: async (
+    translation: string,
+    query: string,
+  ): Promise<BibleSearchResultDTO[]> => {
+    const params = new URLSearchParams({
+      translation,
+      query,
+    });
+    const res = await request<any>(`/api/v1/bible/search?${params}`);
+    if (Array.isArray(res)) {
+      return res.map((item: any) => ({
+        reference: item.reference ?? `${item.book ?? ""} ${item.chapter ?? ""}:${item.verse ?? ""}`.trim(),
+        bookId: item.bookId ?? item.id,
+        book: item.book,
+        chapter: item.chapter,
+        verse: item.verse,
+        text: item.text,
+        translation: item.translation ?? translation,
+      }));
+    }
+    const list = res.verses ?? res.items ?? [];
+    return list.map((item: any) => ({
+      reference: item.reference ?? `${item.book ?? ""} ${item.chapter ?? ""}:${item.verse ?? ""}`.trim(),
+      bookId: item.bookId ?? item.id,
+      book: item.book,
+      chapter: item.chapter,
+      verse: item.verse,
+      text: item.text,
+      translation: item.translation ?? translation,
+    }));
+  },
+
+  search: (query: string, translation = "ACF11"): Promise<BibleSearchResultDTO[]> =>
+    bibleApi.searchVerses(translation, query),
 
   getPassage: async (
     book: string,
@@ -510,17 +723,20 @@ export const bibleApi = {
     });
     return request<BiblePassageResponseDTO>(`/api/v1/bible/reference?${params}`);
   },
+};
 
-  search: async (
-    query: string,
-    translation = "ACF11",
-    limit = 20,
-  ): Promise<BibleSearchResultDTO[]> => {
-    const params = new URLSearchParams({
-      q: query,
-      translation,
-      limit: String(limit),
-    });
-    return request<BibleSearchResultDTO[]>(`/api/v1/bible/search?${params}`);
-  },
+// ─── Busca Geral API ──────────────────────────────────────────────
+
+export interface SearchResultsDTO {
+  notes: NoteResponseDTO[];
+  biblePassages: BibleSearchResultDTO[];
+}
+
+export const searchApi = {
+  search: (query: string, token: string): Promise<SearchResultsDTO> =>
+    request<SearchResultsDTO>(
+      `/api/v1/search?${new URLSearchParams({ q: query })}`,
+      {},
+      token,
+    ),
 };
