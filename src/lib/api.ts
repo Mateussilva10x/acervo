@@ -536,10 +536,19 @@ export const notesApi = {
 export const planApi = {
   getUsage: async (token: string): Promise<PlanUsageDTO> => {
     try {
-      return await request<PlanUsageDTO>("/api/v1/plans/usage", {}, token);
+      return await request<PlanUsageDTO>("/api/v1/plan/usage", {}, token);
     } catch (err: any) {
       if (err?.status === 404) {
-        return request<PlanUsageDTO>("/api/v1/plan/usage", {}, token);
+        // Fallback caso a rota alternativa plural exista ou backend não tenha o endpoint
+        try {
+          return await request<PlanUsageDTO>("/api/v1/plans/usage", {}, token);
+        } catch {
+          return {
+            planType: "FREE",
+            notes: { used: 0, limit: 5, canCreate: true },
+            themes: { used: 0, limit: 3, canCreate: true },
+          };
+        }
       }
       throw err;
     }
@@ -550,14 +559,14 @@ export const paymentApi = {
   createCheckoutSession: async (token: string): Promise<CheckoutResponseDTO> => {
     try {
       return await request<CheckoutResponseDTO>(
-        "/api/v1/payments/checkout",
+        "/api/v1/payment/checkout",
         { method: "POST" },
         token,
       );
     } catch (err: any) {
       if (err?.status === 404) {
         return request<CheckoutResponseDTO>(
-          "/api/v1/payment/checkout",
+          "/api/v1/payments/checkout",
           { method: "POST" },
           token,
         );
@@ -633,8 +642,12 @@ export const bibleApi = {
     bookId: string | number,
     chapter: string | number,
   ): Promise<BibleChapterResponseDTO> => {
-    const path = `/api/v1/bible/${encodeURIComponent(translation)}/${encodeURIComponent(bookId)}/${encodeURIComponent(chapter)}`;
-    const res = await request<any>(path);
+    const params = new URLSearchParams({
+      book: String(bookId),
+      chapter: String(chapter),
+      translation,
+    });
+    const res = await request<any>(`/api/v1/bible/passages?${params}`);
 
     if (Array.isArray(res)) {
       return {
@@ -667,7 +680,7 @@ export const bibleApi = {
   ): Promise<BibleSearchResultDTO[]> => {
     const params = new URLSearchParams({
       translation,
-      query,
+      q: query,
     });
     const res = await request<any>(`/api/v1/bible/search?${params}`);
     if (Array.isArray(res)) {
