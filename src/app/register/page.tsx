@@ -53,23 +53,35 @@ export default function RegisterPage() {
         password,
         cpf: cpfDigits,
       });
-
-      // 2. Faz login automático e vai ao dashboard (registro nunca é primeiro login)
-      const { token } = await authApi.login({ email, password });
-      setAuth(token, null); // user será carregado sob demanda (Settings)
-      router.push("/app/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {
           setError("E-mail já cadastrado. Tente fazer login.");
         } else if (err.status === 400) {
-          setError("Dados inválidos. Verifique as informações e tente novamente.");
+          setError(err.message || "Dados inválidos. Verifique as informações e tente novamente.");
+        } else if (err.status === 429) {
+          setError("Muitas tentativas. Aguarde alguns minutos e tente novamente.");
         } else {
           setError(`Erro do servidor (${err.status}). Tente novamente.`);
         }
       } else {
         setError("Não foi possível conectar ao servidor.");
       }
+      setLoading(false);
+      return;
+    }
+
+    // 2. A conta JÁ EXISTE a partir daqui. Uma falha no login automático não é
+    //    falha de cadastro: antes as duas chamadas dividiam o mesmo catch, e um
+    //    erro no login (um 429, por exemplo) exibia "Erro do servidor" numa
+    //    conta recém-criada. O usuário tentava de novo e recebia 409
+    //    "E-mail já cadastrado", sem saber que a senha digitada já valia.
+    try {
+      const { token } = await authApi.login({ email, password });
+      setAuth(token, null); // user será carregado sob demanda (Settings)
+      router.push("/app/dashboard");
+    } catch {
+      router.push("/login?cadastro=sucesso");
     } finally {
       setLoading(false);
     }

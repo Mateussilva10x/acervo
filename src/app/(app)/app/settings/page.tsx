@@ -70,8 +70,14 @@ export default function SettingsPage() {
 
   const planType = user?.planType ?? planUsage?.planType ?? "FREE";
   const isPro = planType === "PRO";
-  const notesCount = notes.length;
-  const themesCount = themes.length;
+
+  // Uso e limites vêm de GET /plan/usage, que é a fonte da verdade. Antes a
+  // contagem saía do store local e os limites estavam escritos no JSX ("/ 5",
+  // "/ 3"): mudar PLAN_FREE_MAX_NOTES no servidor deixava a tela mentindo.
+  const notesCount  = planUsage?.notes.used  ?? notes.length;
+  const themesCount = planUsage?.themes.used ?? themes.length;
+  const notesLimit  = planUsage?.notes.limit  ?? 5;
+  const themesLimit = planUsage?.themes.limit ?? 3;
 
   async function handleCheckout() {
     if (!token) return;
@@ -212,14 +218,14 @@ export default function SettingsPage() {
               <div className="rounded-xl border border-border bg-background p-3.5 space-y-2">
                 <div className="flex justify-between text-xs">
                   <span className="font-medium text-foreground">Notas</span>
-                  <span className="text-muted-foreground">{notesCount} / 5</span>
+                  <span className="text-muted-foreground">{notesCount} / {notesLimit}</span>
                 </div>
                 <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
                   <div
                     className={`h-2 rounded-full transition-all ${
-                      notesCount >= 5 ? "bg-destructive" : "bg-gold"
+                      notesCount >= notesLimit ? "bg-destructive" : "bg-gold"
                     }`}
-                    style={{ width: `${Math.min(100, (notesCount / 5) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (notesCount / notesLimit) * 100)}%` }}
                   />
                 </div>
               </div>
@@ -227,14 +233,14 @@ export default function SettingsPage() {
               <div className="rounded-xl border border-border bg-background p-3.5 space-y-2">
                 <div className="flex justify-between text-xs">
                   <span className="font-medium text-foreground">Temas</span>
-                  <span className="text-muted-foreground">{themesCount} / 3</span>
+                  <span className="text-muted-foreground">{themesCount} / {themesLimit}</span>
                 </div>
                 <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
                   <div
                     className={`h-2 rounded-full transition-all ${
-                      themesCount >= 3 ? "bg-destructive" : "bg-gold"
+                      themesCount >= themesLimit ? "bg-destructive" : "bg-gold"
                     }`}
-                    style={{ width: `${Math.min(100, (themesCount / 3) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (themesCount / themesLimit) * 100)}%` }}
                   />
                 </div>
               </div>

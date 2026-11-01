@@ -39,6 +39,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const isPro = (user?.planType ?? planUsage?.planType ?? "FREE") === "PRO";
 
+  // Uso e limites vêm de GET /plan/usage; os números abaixo eram fixos no JSX
+  // e desalinhavam se PLAN_FREE_MAX_NOTES/THEMES mudassem no servidor.
+  const notasUsadas  = planUsage?.notes.used   ?? notes.length;
+  const temasUsados  = planUsage?.themes.used  ?? themes.length;
+  const notasLimite  = planUsage?.notes.limit  ?? 5;
+  const temasLimite  = planUsage?.themes.limit ?? 3;
+
   function handleLogout() {
     logout();
     router.push("/login");
@@ -110,7 +117,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               <span className="text-[10px] text-gold font-medium">Upgrade</span>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              {notes.length}/5 notas • {themes.length}/3 temas
+              {notasUsadas}/{notasLimite} notas • {temasUsados}/{temasLimite} temas
             </p>
           </Link>
         )}

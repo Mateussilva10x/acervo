@@ -5,9 +5,18 @@ import { defineConfig, devices } from "@playwright/test";
  *   backend: docker compose up -d  (em ../segundoCerebroApi)
  *   front:   npm run dev
  *
+ * E exige os navegadores do Playwright instalados — eles NÃO vêm no
+ * `npm install`:
+ *   npx playwright install chromium
+ *
+ * Em ambientes que já têm um Chromium (CI, containers), aponte
+ * PLAYWRIGHT_CHROMIUM_PATH para o executável e o download fica dispensado.
+ *
  * Não há webServer configurado de propósito: o dev server normalmente já está
  * de pé durante o desenvolvimento, e subir outro competiria pela porta 3000.
  */
+const chromiumPath = process.env.PLAYWRIGHT_CHROMIUM_PATH;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -20,6 +29,14 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        ...(chromiumPath
+          ? { launchOptions: { executablePath: chromiumPath, args: ["--no-sandbox"] } }
+          : {}),
+      },
+    },
   ],
 });

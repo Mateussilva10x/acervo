@@ -169,7 +169,12 @@ function NewNoteContent() {
     try {
       const form = new FormData();
       form.append("pdf", pdfFile);
-      const res  = await fetch("/api/ai/transcribe-pdf", { method: "POST", body: form });
+      // A rota passou a exigir sessão: sem o token ela responde 401.
+      const res  = await fetch("/api/ai/transcribe-pdf", {
+        method: "POST",
+        body: form,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Erro ${res.status}`);
       applyPdfResult(data);

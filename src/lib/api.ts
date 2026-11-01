@@ -374,54 +374,33 @@ export const authApi = {
   me: (token: string): Promise<UserResponseDTO> =>
     request<UserResponseDTO>("/api/v1/auth/me", {}, token),
 
-  firstAccessPassword: async (
-    idOrData: string | FirstAccessPasswordDTO,
-    newPasswordOrToken?: string,
-    tokenParam?: string,
+  /**
+   * Define a senha do primeiro acesso.
+   *
+   * A versão anterior tentava antes `PATCH /api/v1/users/{id}/first-access-password`,
+   * derivando o id das claims do JWT. Só que o token carrega apenas `iss`, `sub`
+   * e `exp`: o `id` não existe, então caía no `sub` — que é o e-mail — e montava
+   * uma URL sob `/api/v1/users/**`, área restrita a ROLE_ADMIN. O backend
+   * respondia 403, e o fallback só tratava 404 e 405, então o 403 escapava como
+   * erro. Resultado: todo usuário novo ficava presto em /change-password.
+   *
+   * O backend expõe um único endpoint para isto, e ele funciona para o usuário
+   * autenticado comum — é o que chamamos agora.
+   */
+  firstAccessPassword: (
+    data: FirstAccessPasswordDTO,
+    token: string,
   ): Promise<void> => {
-    if (typeof idOrData === "string" && newPasswordOrToken) {
-      return request<void>(
-        `/api/v1/users/${encodeURIComponent(idOrData)}/first-access-password`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ newPassword: newPasswordOrToken }),
-        },
-        tokenParam,
-      );
-    }
-
-    const payload = idOrData as any;
-    const pwd = payload.newPassword || payload.password;
-    const tok = newPasswordOrToken;
-
-    let userId: string | null = null;
-    if (tok) {
-      const claims = parseJwt(tok);
-      userId = claims?.id || claims?.userId || claims?.sub;
-    }
-
-    if (userId) {
-      try {
-        return await request<void>(
-          `/api/v1/users/${encodeURIComponent(userId)}/first-access-password`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({ newPassword: pwd }),
-          },
-          tok,
-        );
-      } catch (err: any) {
-        if (err?.status !== 404 && err?.status !== 405) throw err;
-      }
-    }
-
+    const senha = data.newPassword ?? data.password;
     return request<void>(
       "/api/v1/auth/first-access-password",
       {
         method: "POST",
-        body: JSON.stringify({ newPassword: pwd, password: pwd }),
+        // O DTO do backend espera "password"; "newPassword" vai junto por
+        // compatibilidade com versões que liam esse nome.
+        body: JSON.stringify({ password: senha, newPassword: senha }),
       },
-      tok,
+      token,
     );
   },
 

@@ -30,11 +30,7 @@ export default function ChangePasswordPage() {
     setError("");
     setLoading(true);
     try {
-      if (user?.id) {
-        await authApi.firstAccessPassword(user.id, newPassword, token);
-      } else {
-        await authApi.firstAccessPassword({ newPassword }, token);
-      }
+      await authApi.firstAccessPassword({ newPassword }, token);
       if (user) {
         setUser({ ...user, isFirstLogin: false, firstLogin: false });
       }

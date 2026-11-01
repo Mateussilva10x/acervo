@@ -38,6 +38,7 @@ function ThemesContent() {
   // Estados de exclusão
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting]         = useState(false);
+  const [deleteError, setDeleteError]   = useState("");
 
   // Modal de limite de plano
   const [showPlanModal, setShowPlanModal] = useState(false);
@@ -45,7 +46,10 @@ function ThemesContent() {
   // Verificação de limite
   const isFree = (user?.planType ?? planUsage?.planType ?? "FREE") === "FREE";
   const themesCount = themes.length;
-  const maxFreeThemes = 3;
+  // O limite vem de GET /plan/usage; o 3 é só o fallback de quando o uso ainda
+  // não carregou. Antes estava fixo no código e desalinhava se o servidor
+  // mudasse PLAN_FREE_MAX_THEMES.
+  const maxFreeThemes = planUsage?.themes.limit ?? 3;
   const reachedThemeLimit = isFree && themesCount >= maxFreeThemes;
 
   // Contagem de notas por tema
@@ -110,6 +114,7 @@ function ThemesContent() {
   async function handleDelete() {
     if (!deleteTarget || !token) return;
     setDeleting(true);
+    setDeleteError("");
     try {
       await themesApi.delete(deleteTarget.id, token);
       deleteTheme(deleteTarget.id);
@@ -117,9 +122,13 @@ function ThemesContent() {
         router.push("/app/themes");
       }
       setDeleteTarget(null);
-    } catch {
-      deleteTheme(deleteTarget.id);
-      setDeleteTarget(null);
+    } catch (err) {
+      // Antes o catch removia o tema do store mesmo com a exclusão falhando:
+      // sumia da tela, o usuário acreditava ter excluído, e ele voltava no
+      // carregamento seguinte. Agora o erro aparece e o item permanece.
+      setDeleteError(
+        err instanceof Error ? err.message : "Não foi possível excluir o tema.",
+      );
     } finally {
       setDeleting(false);
     }
@@ -143,11 +152,19 @@ function ThemesContent() {
             <>
               O tema <span className="font-semibold text-foreground">&ldquo;{deleteTarget.name}&rdquo;</span> será
               removido do acervo. As notas associadas a ele continuarão salvas, mas sem essa etiqueta.
+              {deleteError && (
+                <span className="mt-3 block rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {deleteError}
+                </span>
+              )}
             </>
           }
           loading={deleting}
           onConfirm={handleDelete}
-          onCancel={() => setDeleteTarget(null)}
+          onCancel={() => {
+            setDeleteError("");
+            setDeleteTarget(null);
+          }}
         />
       )}
 
@@ -218,7 +235,7 @@ function ThemesContent() {
             <Tag size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder={reachedThemeLimit ? "Limite de 3 temas atingido (Plano Free)" : "Nome do novo tema (ex: Graça, Oração, Família)..."}
+              placeholder={reachedThemeLimit ? `Limite de ${maxFreeThemes} temas atingido (Plano Free)` : "Nome do novo tema (ex: Graça, Oração, Família)..."}
               value={newThemeName}
               onChange={(e) => setNewThemeName(e.target.value)}
               disabled={reachedThemeLimit}
