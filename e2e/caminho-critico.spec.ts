@@ -56,7 +56,7 @@ async function entrar(page: Page, email: string, senha: string) {
 }
 
 test.describe("caminho crítico", () => {
-  test("cadastro, primeiro acesso, criar, editar e apagar nota", async ({ page }) => {
+  test("cadastro, login, criar, editar e apagar nota", async ({ page }) => {
     const conta = contaNova();
 
     await test.step("cadastro entra direto no app", async () => {
@@ -64,22 +64,14 @@ test.describe("caminho crítico", () => {
       await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 30_000 });
     });
 
-    await test.step("sair e entrar leva ao primeiro acesso", async () => {
+    await test.step("sair e entrar com a senha escolhida no cadastro", async () => {
       await page.getByRole("button", { name: "Sair" }).click();
       await expect(page).toHaveURL(/\/(login)?$/, { timeout: 20_000 });
 
+      // Quem se cadastra define a própria senha, então não passa pela tela de
+      // primeiro acesso: ela é das contas criadas por admin, com senha
+      // provisória. O caso de primeiro acesso tem teste próprio, abaixo.
       await entrar(page, conta.email, conta.senhaInicial);
-      await expect(page).toHaveURL(/\/change-password/, { timeout: 20_000 });
-    });
-
-    await test.step("definir a senha do primeiro acesso", async () => {
-      await page.getByPlaceholder("Mínimo 8 caracteres").fill(conta.senhaFinal);
-      await page.getByPlaceholder("Repita a senha").fill(conta.senhaFinal);
-      await page.getByRole("button", { name: /definir senha/i }).click();
-
-      // O backend responde 200 sem corpo aqui. Antes do ajuste no cliente,
-      // isso virava "Não foi possível conectar ao servidor" apesar do sucesso.
-      await expect(page.getByText(/não foi possível conectar/i)).toHaveCount(0);
       await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 20_000 });
     });
 
@@ -120,13 +112,32 @@ test.describe("caminho crítico", () => {
 
     await test.step("apagar nota remove do backend", async () => {
       await page.getByText("Nota E2E editada").first().click();
+      await expect(page).toHaveURL(/\/app\/notes\/[0-9a-f-]+$/, { timeout: 20_000 });
+
+      // O handler de exclusão desiste calado quando o token ainda não saiu da
+      // hidratação (`if (!token) return`). Esperar o título da nota garante que
+      // a tela terminou de carregar antes do clique — sem isso, o passo falhava
+      // em cerca de uma execução a cada três.
+      await expect(
+        page.getByRole("heading", { name: "Nota E2E editada" }),
+      ).toBeVisible({ timeout: 20_000 });
+
       await page.getByRole("button", { name: /excluir/i }).click();
 
       // O modal desmonta assim que a exclusão conclui e a página navega, e o
       // clique normal do Playwright reavalia o elemento no meio disso.
       const confirmar = page.getByRole("button", { name: /^deletar$/i });
       await confirmar.waitFor({ state: "visible" });
-      await confirmar.dispatchEvent("click");
+
+      // Amarrar o clique à resposta do DELETE evita seguir adiante antes de a
+      // exclusão ter de fato acontecido.
+      await Promise.all([
+        page.waitForResponse(
+          (r) => r.request().method() === "DELETE" && r.url().includes("/notes/"),
+          { timeout: 20_000 },
+        ),
+        confirmar.dispatchEvent("click"),
+      ]);
 
       await expect(page).toHaveURL(/\/app\/notes$/, { timeout: 20_000 });
 
@@ -135,6 +146,57 @@ test.describe("caminho crítico", () => {
       await page.reload();
       await expect(page.getByText("Nota E2E editada")).toHaveCount(0);
     });
+  });
+
+  test("conta criada por admin passa pelo primeiro acesso", async ({ page, request }) => {
+    // Só contas criadas por um administrador nascem com senha provisória. Sem
+    // credenciais de admin no ambiente não há como montar o cenário, então o
+    // teste se declara skipped em vez de falhar.
+    const adminEmail = process.env.E2E_ADMIN_EMAIL;
+    const adminSenha = process.env.E2E_ADMIN_PASSWORD;
+    test.skip(
+      !adminEmail || !adminSenha,
+      "defina E2E_ADMIN_EMAIL e E2E_ADMIN_PASSWORD para cobrir o primeiro acesso",
+    );
+
+    const login = await request.post("/api/proxy/api/v1/auth/login", {
+      data: { email: adminEmail, password: adminSenha },
+    });
+    expect(login.ok()).toBeTruthy();
+    const { token } = await login.json();
+
+    const conta = contaNova();
+    const criada = await request.post("/api/proxy/api/v1/users", {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        name: conta.nome,
+        email: conta.email,
+        birthDate: "1990-05-10",
+        password: conta.senhaInicial,
+        cpf: conta.cpf,
+      },
+    });
+    expect(criada.status()).toBe(201);
+
+    await entrar(page, conta.email, conta.senhaInicial);
+    await expect(page).toHaveURL(/\/change-password/, { timeout: 20_000 });
+
+    await page.getByPlaceholder("Mínimo 8 caracteres").fill(conta.senhaFinal);
+    await page.getByPlaceholder("Repita a senha").fill(conta.senhaFinal);
+    await page.getByRole("button", { name: /definir senha/i }).click();
+
+    // O backend responde 200 sem corpo aqui. Antes do ajuste no cliente, isso
+    // virava "Não foi possível conectar ao servidor" apesar do sucesso. E
+    // enquanto o cliente chamava a rota de ADMIN, tomava 403 e deixava todo
+    // usuário preso nesta tela.
+    await expect(page.getByText(/não foi possível conectar/i)).toHaveCount(0);
+    await expect(page.getByText(/erro ao redefinir senha/i)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 20_000 });
+
+    // A senha nova é a que vale a partir de agora.
+    await page.getByRole("button", { name: "Sair" }).click();
+    await entrar(page, conta.email, conta.senhaFinal);
+    await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 20_000 });
   });
 
   test("sessão expirada manda para o login com aviso", async ({ page, context }) => {

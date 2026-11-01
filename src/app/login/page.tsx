@@ -17,6 +17,8 @@ function LoginContent() {
   const [resetSuccess, setResetSuccess] = useState(false);
   // Setado pelo middleware e pelo handler de 401 do api.ts quando a sessao cai.
   const [sessaoExpirada, setSessaoExpirada] = useState(false);
+  // Vindo de /register quando a conta foi criada mas o login automático falhou.
+  const [cadastroOk, setCadastroOk] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("reset") === "success") {
@@ -24,6 +26,9 @@ function LoginContent() {
     }
     if (searchParams.get("expirado") === "1") {
       setSessaoExpirada(true);
+    }
+    if (searchParams.get("cadastro") === "sucesso") {
+      setCadastroOk(true);
     }
   }, [searchParams]);
 
@@ -47,6 +52,13 @@ function LoginContent() {
       if (err instanceof ApiError) {
         if (err.status === 401 || err.status === 403) {
           setError("Email ou senha incorretos.");
+        } else if (err.status === 429) {
+          // "Tente novamente" seria conselho ao contrário: cada tentativa
+          // prolonga o bloqueio por IP.
+          setError(
+            err.message ||
+              "Muitas tentativas de login. Aguarde alguns minutos antes de tentar de novo.",
+          );
         } else {
           setError(`Erro do servidor (${err.status}). Tente novamente.`);
         }
@@ -106,6 +118,11 @@ function LoginContent() {
           {/* Login */}
           {step === "login" && (
             <>
+              {cadastroOk && (
+                <div className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-center text-sm text-green-700">
+                  Conta criada com sucesso! Entre com o e-mail e a senha que você acabou de cadastrar.
+                </div>
+              )}
               {resetSuccess && (
                 <div className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-center text-sm text-green-700">
                   Senha redefinida com sucesso! Faça login com sua nova senha.
